@@ -1,0 +1,2631 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Management Inspection & Analytics Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Export Libraries (PDF, Excel & HTML Canvas for Visual Chart Capture) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- Chart.js Library for Management Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg-primary: #F8F4E8;
+      --bg-card: #FFFFFF;
+      --text-main: #0B1F3A;
+      --text-muted: #4B5563;
+      --border-color: #E2D9C2;
+      --primary-navy: #0B1F3A;
+      --secondary-navy: #12304A;
+      --accent-gold: #C9A227;
+      --success-green: #22C55E;
+      --warning-amber: #D97706;
+      --danger-red: #DC2626;
+      --brand: #C9A227;
+      --brand-hover: #B08D1F;
+      --brand-light: rgba(201, 162, 39, 0.12);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #070F18;
+      --bg-card: #0B1F3A;
+      --text-main: #FFFFFF;
+      --text-muted: #94A3B8;
+      --border-color: #12304A;
+      --primary-navy: #070F18;
+      --secondary-navy: #0B1F3A;
+      --accent-gold: #C9A227;
+      --brand: #C9A227;
+      --brand-hover: #B08D1F;
+      --brand-light: rgba(201, 162, 39, 0.15);
+    }
+
+    [data-theme="light"] {
+      --bg-primary: #F8F4E8;
+      --bg-card: #FFFFFF;
+      --text-main: #0B1F3A;
+      --text-muted: #4B5563;
+      --border-color: #E2D9C2;
+      --primary-navy: #0B1F3A;
+      --secondary-navy: #12304A;
+      --accent-gold: #C9A227;
+      --brand: #C9A227;
+      --brand-hover: #B08D1F;
+      --brand-light: rgba(201, 162, 39, 0.15);
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    .card-theme {
+      background-color: var(--bg-card);
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .status-btn-good input:checked + label {
+      background-color: var(--success-green);
+      color: white;
+      border-color: var(--success-green);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+    }
+    .status-btn-bad input:checked + label {
+      background-color: var(--danger-red);
+      color: white;
+      border-color: var(--danger-red);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+    }
+
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .accordion-content.active {
+      max-height: 2500px;
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    canvas { touch-action: none; }
+
+    /* Modern 3D Cube Visual Representation Styling */
+    .cube-container {
+      perspective: 1200px;
+      width: 140px;
+      height: 140px;
+      margin: 0 auto;
+    }
+    .cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: rotateX(-20deg) rotateY(45deg);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cube:hover {
+      transform: rotateX(-10deg) rotateY(65deg);
+    }
+    .cube-face {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border: 2px solid rgba(201, 162, 39, 0.3);
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+    }
+    .cube-front  { transform: rotateY(  0deg) translateZ(70px); }
+    .cube-back   { transform: rotateY(180deg) translateZ(70px); }
+    .cube-right  { transform: rotateY( 90deg) translateZ(70px); }
+    .cube-left   { transform: rotateY(-90deg) translateZ(70px); }
+    .cube-top    { transform: rotateX( 90deg) translateZ(70px); }
+    .cube-bottom { transform: rotateX(-90deg) translateZ(70px); }
+
+    .cube-portion-pass {
+      background-color: rgba(34, 197, 94, 0.9);
+      transition: height 0.6s ease;
+    }
+    .cube-portion-fail {
+      background-color: rgba(220, 38, 38, 0.9);
+      transition: height 0.6s ease;
+    }
+
+    /* Modern 3D Pyramid Visual Representation Styling (replaces cube visual model) */
+    .pyramid-container {
+      perspective: 1200px;
+      width: 140px;
+      height: 140px;
+      margin: 0 auto;
+    }
+    .pyramid {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transform: rotateX(-20deg) rotateY(45deg);
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .pyramid:hover {
+      transform: rotateX(-10deg) rotateY(65deg);
+    }
+    .pyramid-face {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 140px;
+      height: 140px;
+      clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+      border: 2px solid rgba(201, 162, 39, 0.3);
+      box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+      transform-origin: 50% 0%;
+      backface-visibility: hidden;
+    }
+    .pyramid-front { transform: rotateY(   0deg) rotateX(38deg); }
+    .pyramid-right { transform: rotateY(  90deg) rotateX(38deg); }
+    .pyramid-back  { transform: rotateY( 180deg) rotateX(38deg); }
+    .pyramid-left  { transform: rotateY( -90deg) rotateX(38deg); }
+
+    /* Speedometer / Gauge Visual Representation Styling (replaces pyramid percentage visual) */
+    .gauge-container {
+      margin: 0 auto;
+    }
+    .gauge-canvas-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2 / 1.15;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 9999px; }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-[#C9A227] selection:text-white flex flex-col md:flex-row">
+
+  <!-- Floating Glow Header Background Accent -->
+  <div class="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-[#C9A227]/10 via-transparent to-transparent pointer-events-none -z-10"></div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="w-full md:w-72 card-theme border-r flex flex-col justify-between shrink-0 sticky top-0 h-auto md:h-screen z-40 shadow-md transition-colors duration-200" style="background-color: var(--primary-navy); border-color: var(--border-color); color: #FFFFFF;">
+    <div>
+      <!-- Sidebar Header -->
+      <div class="p-6 border-b flex items-center space-x-3.5" style="border-color: #12304A">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center bg-gradient-to-br from-[#12304A] to-[#0B1F3A] text-[#C9A227] border border-[#C9A227]/30 shadow-lg shrink-0">
+          <i class="fa-solid fa-clipboard-check text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-black text-sm sm:text-base tracking-tight leading-none mb-1 text-slate-100">Management Inspection</h1>
+          <p class="text-[11px] font-medium text-[#C9A227]">Safety Analytics Suite</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links (Vertical) -->
+      <nav class="p-4 space-y-1.5 flex flex-row md:flex-col overflow-x-auto gap-2 md:gap-1.5">
+        <button onclick="switchTab('new')" id="tab-new" class="w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold bg-[#C9A227] text-[#0B1F3A] flex items-center gap-3 shrink-0 transition-all shadow-md shadow-[#C9A227]/20">
+          <i class="fa-solid fa-pen-to-square w-5 text-center"></i> Inspection Form
+        </button>
+        <button onclick="switchTab('history')" id="tab-history" class="w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-[#C9A227] hover:bg-[#C9A227]/10 flex items-center gap-3 shrink-0 transition-all">
+          <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i> History Records
+        </button>
+        <button onclick="switchTab('failed')" id="tab-failed" class="w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-[#C9A227] hover:bg-[#C9A227]/10 flex items-center gap-3 shrink-0 transition-all">
+          <i class="fa-solid fa-ban w-5 text-center"></i> Failed Inspections
+        </button>
+        <button onclick="switchTab('reinspections')" id="tab-reinspections" class="w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-[#C9A227] hover:bg-[#C9A227]/10 flex items-center gap-3 shrink-0 transition-all">
+          <i class="fa-solid fa-triangle-exclamation w-5 text-center"></i> Re-Inspections
+        </button>
+        <button onclick="switchTab('analytics')" id="tab-analytics" class="w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-[#C9A227] hover:bg-[#C9A227]/10 flex items-center gap-3 shrink-0 transition-all">
+          <i class="fa-solid fa-chart-pie w-5 text-center"></i> Dashboards
+        </button>
+        <button onclick="switchTab('archive')" id="tab-archive" class="w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-[#C9A227] hover:bg-[#C9A227]/10 flex items-center gap-3 shrink-0 transition-all">
+          <i class="fa-solid fa-box-archive w-5 text-center"></i> Archive Vault
+        </button>
+      </nav>
+    </div>
+
+    <!-- Sidebar Bottom Controls -->
+    <div class="p-4 border-t space-y-3 hidden md:block" style="border-color: #12304A">
+      <div class="relative">
+        <select id="themeSelect" onchange="changeTheme(this.value)" class="w-full text-xs font-semibold border rounded-xl px-3.5 py-2.5 bg-[#12304A] focus:outline-none focus:ring-2 focus:ring-[#C9A227]/20 cursor-pointer shadow-sm transition text-slate-200 border-[#1E3A5F]">
+          <option value="default" class="bg-[#0B1F3A] text-slate-200">⚓ Cream & Deep Navy</option>
+          <option value="dark" class="bg-[#070F18] text-slate-200">🌙 Deep Midnight</option>
+          <option value="light" class="bg-[#FFFFFF] text-slate-800">☀️ Light Industrial</option>
+        </select>
+      </div>
+      
+      <button onclick="toggleUrlBar()" title="API Endpoint Settings" class="w-full p-2.5 rounded-xl border border-[#12304A] bg-[#12304A] text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition hover:border-[#C9A227]/50 text-slate-200">
+        <i class="fa-solid fa-gear text-sm text-[#C9A227]"></i> API Configuration
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="flex-1 flex flex-col min-w-0 min-h-screen">
+    
+    <!-- Mobile Header / Top Bar Controls -->
+    <header class="sticky top-0 z-30 border-b card-theme backdrop-blur-xl bg-opacity-90 shadow-sm transition-colors duration-200 md:hidden flex justify-between items-center p-4">
+      <div class="font-bold text-sm" style="color: var(--primary-navy)">Navigation Menu</div>
+      <div class="flex items-center space-x-2">
+        <select id="themeSelectMobile" onchange="changeTheme(this.value)" class="text-xs font-semibold border rounded-xl px-2 py-1.5 bg-transparent card-theme">
+          <option value="default">Cream/Navy</option>
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+        <button onclick="toggleUrlBar()" class="p-2 rounded-xl border card-theme text-xs"><i class="fa-solid fa-gear"></i></button>
+      </div>
+    </header>
+
+    <!-- Google Sheets Integration Endpoint Bar -->
+    <div id="endpointBar" class="hidden bg-[#0B1F3A] text-white py-3 px-4 sm:px-6 shadow-inner border-b border-[#C9A227]/30 transition-all duration-300">
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up text-sm text-[#C9A227]"></i>
+          <span class="font-bold">Backend Web App Endpoint Configuration (Google Sheets):</span>
+        </div>
+        <div class="flex items-center gap-2.5 w-full sm:w-auto flex-1 max-w-xl">
+          <input type="url" id="sheetsUrl" placeholder="Paste Google Apps Script Web App URL here..." class="w-full px-3.5 py-2 text-xs rounded-xl bg-white/10 text-white placeholder-slate-400 border border-[#C9A227]/30 outline-none focus:ring-2 focus:ring-[#C9A227]/40">
+          <button onclick="saveSheetsUrl()" class="px-4 py-2 bg-[#C9A227] text-[#0B1F3A] font-bold rounded-xl hover:bg-[#B08D1F] transition shrink-0 flex items-center gap-1.5 shadow">
+            <i class="fa-solid fa-floppy-disk"></i> Save & Lock
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <main class="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-8 flex-1">
+
+      <!-- TAB 1: NEW INSPECTION FORM -->
+      <div id="view-new" class="space-y-6">
+        <form id="inspectionForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
+          
+          <!-- Section 1: Vehicle Information -->
+          <section class="border rounded-3xl p-6 sm:p-8 shadow-md card-theme space-y-6 transition-all">
+            <div class="flex items-center justify-between border-b pb-4" style="border-color: var(--border-color)">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-10 h-10 rounded-xl bg-[#C9A227]/10 border border-[#C9A227]/30 flex items-center justify-center text-[#C9A227]">
+                  <i class="fa-solid fa-truck-front text-base"></i>
+                </div>
+                <div>
+                  <h2 class="text-base font-bold tracking-tight" style="color: var(--primary-navy)">1. Vehicle Information</h2>
+                  <p class="text-xs font-medium" style="color: var(--text-muted)">Enter primary identification details for the vehicle.</p>
+                </div>
+              </div>
+              <div id="reinspectionBanner" class="hidden text-xs font-bold px-3 py-1 bg-amber-500/20 text-amber-600 rounded-xl border border-amber-500/30">
+                <i class="fa-solid fa-rotate-right mr-1"></i> Re-Inspection Mode Active
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Truck plate number *</label>
+                <input type="text" id="regNo" required placeholder="e.g. GT-4092-22" onblur="checkReinspectionRequired()" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Driver name *</label>
+                <input type="text" id="driverNameInput" required placeholder="Full name of driver" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Current Odometer (km)</label>
+                <input type="number" id="odometer" placeholder="124500" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Date and time *</label>
+                <input type="date" id="inspectionDate" required class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">OMC *</label>
+                <select id="omc" required class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition cursor-pointer font-medium card-theme" style="border-color: var(--border-color)">
+                  <option value="">Select OMC...</option>
+                  <option value="TOTAL">TOTAL</option>
+                  <option value="GOIL">GOIL</option>
+                  <option value="BOST">BOST</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 2: Regulatory Requirement -->
+          <section class="border rounded-3xl p-6 sm:p-8 shadow-md card-theme space-y-6 transition-all">
+            <div class="flex items-center space-x-3.5 border-b pb-4" style="border-color: var(--border-color)">
+              <div class="w-10 h-10 rounded-xl bg-[#C9A227]/10 border border-[#C9A227]/30 flex items-center justify-center text-[#C9A227]">
+                <i class="fa-solid fa-file-shield text-base"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-bold tracking-tight" style="color: var(--primary-navy)">2. Regulatory Requirement (Expiry / Validation Dates)</h2>
+                <p class="text-xs font-medium" style="color: var(--text-muted)">Track compliance validation certificates and permits.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Driver’s License (bbf)</label>
+                <input type="date" id="reg_license" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Insurance (bbf)</label>
+                <input type="date" id="reg_insurance" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">DVLA (bbf)</label>
+                <input type="date" id="reg_dvla" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Calibration Certificate (bbf)</label>
+                <input type="date" id="reg_calibration" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">NPA (bbf)</label>
+                <input type="date" id="reg_npa" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">RSL/ECL (bbf)</label>
+                <input type="date" id="reg_rsl" class="w-full px-4 py-3 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+            </div>
+          </section>
+
+          <!-- Section 3: Technical Requirements -->
+          <section class="space-y-4">
+            <div class="flex items-center justify-between px-2">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-10 h-10 rounded-xl bg-[#C9A227]/10 border border-[#C9A227]/30 flex items-center justify-center text-[#C9A227]">
+                  <i class="fa-solid fa-wrench text-base"></i>
+                </div>
+                <h2 class="text-base font-bold tracking-tight" style="color: var(--primary-navy)">3. Technical Requirement (Yes / No)</h2>
+              </div>
+              <span class="text-xs px-3.5 py-1.5 rounded-full font-bold shadow-sm border border-[#C9A227]/30" style="background-color: var(--brand-light); color: var(--brand)">
+                Interactive Safety Checklist
+              </span>
+            </div>
+
+            <div id="checklistContainer" class="space-y-3.5"></div>
+          </section>
+
+          <!-- Previous Failed Inspection & Corrective Actions Stacking History -->
+          <section id="previousDefectsSection" class="hidden border rounded-3xl p-6 sm:p-8 shadow-md card-theme space-y-6 transition-all border-amber-500/40 bg-amber-50/10">
+            <div class="flex items-center space-x-3.5 border-b pb-4" style="border-color: var(--border-color)">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
+                <i class="fa-solid fa-triangle-exclamation text-base"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-bold tracking-tight" style="color: var(--primary-navy)">Previous Defect History & Corrective Actions</h2>
+                <p class="text-xs font-medium" style="color: var(--text-muted)">Review accumulated vehicle defect history and record corrective actions before sign-off.</p>
+              </div>
+            </div>
+            <div id="previousDefectsList" class="space-y-4"></div>
+          </section>
+
+          <!-- Section 4: Signatures & Sign-off -->
+          <section class="border rounded-3xl p-6 sm:p-8 shadow-md card-theme space-y-6 transition-all">
+            <div class="flex items-center space-x-3.5 border-b pb-4" style="border-color: var(--border-color)">
+              <div class="w-10 h-10 rounded-xl bg-[#C9A227]/10 border border-[#C9A227]/30 flex items-center justify-center text-[#C9A227]">
+                <i class="fa-solid fa-signature text-base"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-bold tracking-tight" style="color: var(--primary-navy)">Sign-off & Signatures</h2>
+                <p class="text-xs font-medium" style="color: var(--text-muted)">Authenticate inspection records with digital signatures.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+              <div class="space-y-3.5 border p-5 rounded-2xl card-theme shadow-sm" style="border-color: var(--border-color)">
+                <h3 class="font-bold text-xs uppercase tracking-wider border-b pb-2.5" style="border-color: var(--border-color); color: var(--text-muted)">Inspector’s Information</h3>
+                <div>
+                  <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Inspector’s name *</label>
+                  <input type="text" id="inspectorName" required placeholder="Full name" class="w-full px-4 py-2.5 text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Signature (Draw on device)</label>
+                  <div class="border rounded-2xl bg-white relative overflow-hidden shadow-inner" style="border-color: var(--border-color); height: 140px;">
+                    <canvas id="sigCanvasInspector" class="w-full h-full cursor-crosshair"></canvas>
+                    <button type="button" onclick="clearSignature('Inspector')" class="absolute top-2.5 right-2.5 text-xs px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-bold transition shadow-sm">Clear</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Controls -->
+          <div class="flex items-center justify-between gap-3.5 pt-4">
+            <button type="button" id="cancelReinspectionBtn" onclick="cancelReinspection()" class="hidden px-6 py-3 rounded-2xl border font-bold text-xs sm:text-sm hover:bg-red-50 text-red-600 transition shadow-sm items-center gap-2" style="border-color: var(--border-color)">
+              <i class="fa-solid fa-xmark"></i> Cancel Re-Inspection
+            </button>
+            <div class="flex items-center gap-3.5 ml-auto">
+              <button type="button" onclick="window.print()" class="px-6 py-3 rounded-2xl border font-bold text-xs sm:text-sm hover:bg-[#C9A227]/10 transition shadow-sm flex items-center gap-2" style="border-color: var(--border-color); color: var(--text-main)">
+                <i class="fa-solid fa-print"></i> Print Form
+              </button>
+              <button type="submit" id="submitBtn" class="px-8 py-3 rounded-2xl bg-[#0B1F3A] text-white font-bold text-xs sm:text-sm hover:bg-[#12304A] transition shadow-lg shadow-[#0B1F3A]/25 flex items-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> Submit Inspection
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- TAB 2: HISTORY OF INSPECTIONS -->
+      <div id="view-history" class="hidden space-y-6">
+        
+        <!-- Date Filter & Download Action Bar -->
+        <div class="card-theme p-6 rounded-3xl border shadow-md space-y-5" style="border-color: var(--border-color)">
+          <div class="flex items-center justify-between border-b pb-4" style="border-color: var(--border-color)">
+            <h3 class="font-bold text-sm flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-file-export text-[#C9A227]"></i> Export & Date Range Filters
+            </h3>
+            <button onclick="clearDateFilter()" class="text-xs hover:text-[#C9A227] transition font-bold flex items-center gap-1.5" style="color: var(--text-muted)">
+              <i class="fa-solid fa-rotate-left"></i> Reset Dates
+            </button>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">From Date</label>
+                <input type="date" id="filterStartDate" onchange="renderHistoryTable()" class="px-4 py-2.5 text-xs rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">To Date</label>
+                <input type="date" id="filterEndDate" onchange="renderHistoryTable()" class="px-4 py-2.5 text-xs rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button onclick="downloadHistoryData('pdf')" class="px-5 py-2.5 bg-[#DC2626] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-file-pdf"></i> Download PDF
+              </button>
+              <button onclick="downloadHistoryData('excel')" class="px-5 py-2.5 bg-[#22C55E] hover:bg-green-600 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-file-excel"></i> Download Excel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search & Sync Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-4 card-theme p-4 sm:p-5 rounded-3xl border shadow-md" style="border-color: var(--border-color)">
+          <div class="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
+            <i class="fa-solid fa-magnifying-glass text-[#C9A227] pl-2"></i>
+            <input type="text" id="historySearch" oninput="renderHistoryTable()" placeholder="Search plate number, driver, OMC..." class="px-3 py-2 text-sm border rounded-xl bg-transparent outline-none w-full focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+          </div>
+          <button onclick="syncDataFromSheets()" class="px-5 py-2.5 border text-xs font-bold rounded-xl hover:bg-[#C9A227]/10 transition shadow-sm flex items-center gap-2 card-theme" style="border-color: var(--border-color)">
+            <i class="fa-solid fa-arrows-rotate text-[#C9A227]"></i> Refresh Data
+          </button>
+        </div>
+
+        <!-- History Table -->
+        <div class="overflow-x-auto card-theme">
+          <table class="w-full text-left text-sm">
+            <thead class="border-b text-xs uppercase font-bold tracking-wider card-theme" style="border-color: var(--border-color); color: var(--primary-navy)">
+              <tr>
+                <th class="p-4.5">Date</th>
+                <th class="p-4.5">Plate No</th>
+                <th class="p-4.5">OMC</th>
+                <th class="p-4.5">Driver</th>
+                <th class="p-4.5">Inspector</th>
+                <th class="p-4.5">Re-Inspections</th>
+                <th class="p-4.5">Status</th>
+                <th class="p-4.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="historyTableBody" class="divide-y font-medium text-xs" style="border-color: var(--border-color)"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2.2: FAILED INSPECTIONS TAB -->
+      <div id="view-failed" class="hidden space-y-6">
+        <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md flex flex-wrap items-center justify-between gap-4" style="border-color: var(--border-color)">
+          <div>
+            <h2 class="text-base font-bold flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-ban text-[#DC2626]"></i> Failed Inspections View
+            </h2>
+            <p class="text-xs font-medium mt-1" style="color: var(--text-muted)">Review vehicles with inspection failures and track current cycle reinspections.</p>
+          </div>
+        </div>
+
+        <!-- Search Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-4 card-theme p-4 sm:p-5 rounded-3xl border shadow-md" style="border-color: var(--border-color)">
+          <div class="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-md">
+            <i class="fa-solid fa-magnifying-glass text-[#C9A227] pl-2"></i>
+            <input type="text" id="failedSearch" oninput="renderFailedTable()" placeholder="Filter records by Plate Number..." class="px-3 py-2 text-sm border rounded-xl bg-transparent outline-none w-full focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+          </div>
+        </div>
+
+        <!-- Failed Inspections Table -->
+        <div class="overflow-x-auto card-theme">
+          <table class="w-full text-left text-sm">
+            <thead class="border-b text-xs uppercase font-bold tracking-wider card-theme" style="border-color: var(--border-color); color: var(--primary-navy)">
+              <tr>
+                <th class="p-4.5">Plate Number</th>
+                <th class="p-4.5">Vehicle Details</th>
+                <th class="p-4.5">Date Failed</th>
+                <th class="p-4.5">Re-Inspection Attempts</th>
+                <th class="p-4.5">Reason for Failure</th>
+                <th class="p-4.5 text-right">Action Buttons</th>
+              </tr>
+            </thead>
+            <tbody id="failedTableBody" class="divide-y font-medium text-xs" style="border-color: var(--border-color)"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2.5: RE-INSPECTIONS -->
+      <div id="view-reinspections" class="hidden space-y-6">
+        <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md flex flex-wrap items-center justify-between gap-4" style="border-color: var(--border-color)">
+          <div>
+            <h2 class="text-base font-bold flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-triangle-exclamation text-[#C9A227]"></i> Re-Inspections Management
+            </h2>
+            <p class="text-xs font-medium mt-1" style="color: var(--text-muted)">Displaying all completed re-inspection records.</p>
+          </div>
+          <button onclick="syncDataFromSheets()" class="px-5 py-2.5 border text-xs font-bold rounded-xl hover:bg-[#C9A227]/10 transition shadow-sm flex items-center gap-2 card-theme" style="border-color: var(--border-color)">
+            <i class="fa-solid fa-arrows-rotate text-[#C9A227]"></i> Refresh Data
+          </button>
+        </div>
+
+        <!-- Re-Inspections Grouped-by-Vehicle List -->
+        <div id="reinspectionsListContainer" class="space-y-4"></div>
+      </div>
+
+      <!-- TAB 3: DASHBOARDS (MANAGEMENT ANALYTICS) -->
+      <div id="view-analytics" class="hidden space-y-6">
+        
+        <div class="card-theme p-5 sm:p-6 rounded-3xl border shadow-md flex flex-wrap items-center justify-between gap-4" style="border-color: var(--border-color)">
+          <div class="flex flex-wrap items-center gap-4 w-full md:w-auto">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-filter text-[#C9A227] text-sm"></i>
+              <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Period Filter:</span>
+            </div>
+            <div>
+              <select id="analyticsYearFilter" onchange="renderAnalytics()" class="px-4 py-2.5 text-xs font-bold rounded-xl border bg-transparent outline-none card-theme cursor-pointer shadow-sm" style="border-color: var(--border-color)">
+                <option value="ALL">All Years</option>
+              </select>
+            </div>
+            <div>
+              <select id="analyticsMonthFilter" onchange="renderAnalytics()" class="px-4 py-2.5 text-xs font-bold rounded-xl border bg-transparent outline-none card-theme cursor-pointer shadow-sm" style="border-color: var(--border-color)">
+                <option value="ALL">All Months</option>
+                <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+                <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+                <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+                <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="openVehicleSummaryModal()" class="px-5 py-2.5 bg-[#C9A227] hover:bg-[#B08D1F] text-[#0B1F3A] font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-2">
+              <i class="fa-solid fa-timeline"></i> Vehicle Inspection Summary
+            </button>
+            <button onclick="exportAnalyticsPDF()" class="px-5 py-2.5 bg-[#DC2626] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2">
+              <i class="fa-solid fa-file-pdf"></i> Export Analytics PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+            <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Total Inspections</div>
+            <div class="text-3xl font-black tracking-tight" style="color: var(--primary-navy)" id="kpi-total">0</div>
+            <div class="absolute right-4 bottom-4 text-[#C9A227]/10 text-5xl"><i class="fa-solid fa-clipboard-list"></i></div>
+          </div>
+          <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+            <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Fleet Health Index</div>
+            <div class="text-3xl font-black tracking-tight text-[#22C55E]" id="kpi-health">0%</div>
+            <div class="absolute right-4 bottom-4 text-[#22C55E]/10 text-5xl"><i class="fa-solid fa-heart-pulse"></i></div>
+          </div>
+          <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+            <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Total Failed Inspections</div>
+            <div class="text-3xl font-black tracking-tight text-[#DC2626]" id="kpi-failed-count">0</div>
+            <div class="absolute right-4 bottom-4 text-[#DC2626]/10 text-5xl"><i class="fa-solid fa-ban"></i></div>
+          </div>
+          <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+            <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Total Reinspection Attempts</div>
+            <div class="text-3xl font-black tracking-tight text-[#C9A227]" id="kpi-reinspect-attempts">0</div>
+            <div class="absolute right-4 bottom-4 text-[#C9A227]/10 text-5xl"><i class="fa-solid fa-rotate-right"></i></div>
+          </div>
+        </div>
+
+        <!-- Pending Reinspections Section -->
+        <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md space-y-5" style="border-color: var(--border-color)">
+          <div class="flex items-center justify-between border-b pb-4" style="border-color: var(--border-color)">
+            <h3 class="font-bold text-sm flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-triangle-exclamation text-amber-500"></i> Pending Reinspections
+            </h3>
+            <span id="pendingReinspectionsCountBadge" class="px-3 py-1 rounded-xl text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">0 Pending</span>
+          </div>
+          <div id="pendingReinspectionsList" class="space-y-3"></div>
+        </div>
+
+        <!-- 3D Cube Comparison Widget -->
+        <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md space-y-6" style="border-color: var(--border-color)">
+          <div class="flex items-center justify-between border-b pb-4" style="border-color: var(--border-color)">
+            <h3 class="font-bold text-sm flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-gauge-high text-[#C9A227]"></i> Passed vs Failed Records Visual Model
+            </h3>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+            <div class="py-8 flex items-center justify-center bg-[#0B1F3A]/5 rounded-2xl border" style="border-color: var(--border-color)">
+              <div class="gauge-container w-full max-w-[280px]">
+                <div class="gauge-canvas-wrap">
+                  <canvas id="gaugeChart" role="img" aria-label="Pass rate gauge"></canvas>
+                  <div class="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-0.5 pointer-events-none">
+                    <div class="text-3xl sm:text-4xl font-black tracking-tight leading-none" style="color: var(--primary-navy)" id="gauge-percentage">0%</div>
+                    <div class="text-[10px] font-bold uppercase tracking-wider mt-1" style="color: var(--text-muted)">Pass Rate</div>
+                  </div>
+                </div>
+                <div class="flex items-center justify-between px-1 mt-1 text-[10px] font-bold" style="color: var(--text-muted)">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <div class="p-5 rounded-2xl border card-theme flex items-center justify-between shadow-sm" style="border-color: var(--border-color); background-color: rgba(34, 197, 94, 0.05);">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-4 h-4 rounded-lg bg-[#22C55E] shadow-sm"></div>
+                  <span class="font-extrabold text-xs uppercase tracking-wider text-[#22C55E]">Passed Inspections</span>
+                </div>
+                <div class="text-right">
+                  <div class="text-xl font-black text-[#22C55E]" id="cube-pass-percentage">0%</div>
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)" id="cube-pass-count">0 records</div>
+                </div>
+              </div>
+
+              <div class="p-5 rounded-2xl border card-theme flex items-center justify-between shadow-sm" style="border-color: var(--border-color); background-color: rgba(220, 38, 38, 0.05);">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-4 h-4 rounded-lg bg-[#DC2626] shadow-sm"></div>
+                  <span class="font-extrabold text-xs uppercase tracking-wider text-[#DC2626]">Failed Inspections</span>
+                </div>
+                <div class="text-right">
+                  <div class="text-xl font-black text-[#DC2626]" id="cube-fail-percentage">0%</div>
+                  <div class="text-xs font-semibold" style="color: var(--text-muted)" id="cube-fail-count">0 records</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md" style="border-color: var(--border-color)">
+            <h3 class="font-bold text-sm mb-6 flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-chart-pie text-[#C9A227]"></i> Cumulative Inspection Results
+            </h3>
+            <div class="relative w-full h-72 flex items-center justify-center">
+              <canvas id="chartCumulativePassFail"></canvas>
+            </div>
+          </div>
+
+          <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md" style="border-color: var(--border-color)">
+            <h3 class="font-bold text-sm mb-2 flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-list-check text-[#DC2626]"></i> Technical Defect Breakdown
+            </h3>
+            <div class="flex items-center gap-4 mb-4 text-[11px] font-bold flex-wrap" style="color: var(--text-muted)">
+              <span class="flex items-center gap-1.5 text-[#DC2626]"><i class="fa-solid fa-arrow-up"></i> Rising vs. previous period</span>
+              <span class="flex items-center gap-1.5 text-[#22C55E]"><i class="fa-solid fa-arrow-down"></i> Falling vs. previous period</span>
+              <span class="flex items-center gap-1.5" style="color: var(--text-muted)"><i class="fa-solid fa-minus"></i> No change / no prior data</span>
+            </div>
+            <div class="relative w-full h-72">
+              <canvas id="chartCategoryFailures"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- TAB 4: ARCHIVE VAULT -->
+      <div id="view-archive" class="hidden space-y-6">
+        <div class="card-theme p-6 sm:p-8 rounded-3xl border shadow-md flex flex-wrap items-center justify-between gap-4" style="border-color: var(--border-color)">
+          <div>
+            <h2 class="text-base font-bold flex items-center gap-2.5" style="color: var(--primary-navy)">
+              <i class="fa-solid fa-box-archive text-[#C9A227]"></i> Archive Vault & Historical Analytics
+            </h2>
+            <p class="text-xs font-medium mt-1" style="color: var(--text-muted)">Search and analyze completed yearly archives.</p>
+          </div>
+          <button onclick="triggerManualYearEndArchive()" class="px-4 py-2.5 bg-[#C9A227] text-[#0B1F3A] font-bold text-xs rounded-xl shadow hover:bg-[#B08D1F] transition flex items-center gap-2">
+            <i class="fa-solid fa-clock"></i> Run End-of-Year Snapshot
+          </button>
+        </div>
+
+        <!-- Archive Search & Year Selector -->
+        <div class="card-theme p-6 rounded-3xl border shadow-md space-y-4" style="border-color: var(--border-color)">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider mb-2" style="color: var(--text-muted)">Select or Search Archived Year:</label>
+              <select id="archiveYearSelect" onchange="loadArchivedYear(this.value)" class="px-4 py-2.5 text-xs font-bold rounded-xl border bg-transparent outline-none card-theme cursor-pointer shadow-sm w-64" style="border-color: var(--border-color)">
+                <option value="">-- Choose Archived Year --</option>
+              </select>
+            </div>
+            <div id="archiveExportAction" class="hidden">
+              <button onclick="exportYearlyArchivePDF()" class="px-5 py-2.5 bg-[#DC2626] hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2">
+                <i class="fa-solid fa-file-pdf"></i> Export Complete Year Archive (PDF)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historical Container for Selected Year -->
+        <div id="archiveContentContainer" class="hidden space-y-6">
+          <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs font-bold text-amber-700 flex items-center gap-2">
+            <i class="fa-solid fa-lock"></i> Viewing read-only historical records for year: <span id="activeArchiveYearLabel" class="text-sm font-black underline"></span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+              <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Archived Total Inspections</div>
+              <div class="text-3xl font-black tracking-tight" style="color: var(--primary-navy)" id="arch-kpi-total">0</div>
+            </div>
+            <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+              <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Historical Fleet Health</div>
+              <div class="text-3xl font-black tracking-tight text-[#22C55E]" id="arch-kpi-health">0%</div>
+            </div>
+            <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+              <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Archived Failed Records</div>
+              <div class="text-3xl font-black tracking-tight text-[#DC2626]" id="arch-kpi-failed">0</div>
+            </div>
+            <div class="card-theme p-6 rounded-3xl border shadow-md space-y-2 relative overflow-hidden" style="border-color: var(--border-color)">
+              <div class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Archived Reinspections</div>
+              <div class="text-3xl font-black tracking-tight text-[#C9A227]" id="arch-kpi-reinspect">0</div>
+            </div>
+          </div>
+
+          <div class="card-theme p-6 rounded-3xl border shadow-md space-y-4" style="border-color: var(--border-color)">
+            <h3 class="font-bold text-sm flex items-center gap-2">
+              <i class="fa-solid fa-table text-[#C9A227]"></i> Archived Records
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <thead class="border-b text-xs uppercase font-bold tracking-wider card-theme" style="border-color: var(--border-color); color: var(--primary-navy)">
+                  <tr>
+                    <th class="p-4.5">Date</th>
+                    <th class="p-4.5">Plate No</th>
+                    <th class="p-4.5">OMC</th>
+                    <th class="p-4.5">Driver</th>
+                    <th class="p-4.5">Inspector</th>
+                    <th class="p-4.5">Status</th>
+                    <th class="p-4.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="archiveTableBody" class="divide-y font-medium text-xs" style="border-color: var(--border-color)"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Professional Sticky Footer -->
+    <footer class="mt-auto border-t card-theme py-6 px-4 sm:px-8 transition-colors duration-200" style="border-color: var(--border-color); background-color: var(--bg-card);">
+      <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left text-xs" style="color: var(--text-muted);">
+        <div class="flex items-center gap-2 justify-center md:justify-start">
+          <span class="font-bold" style="color: var(--text-main);">Designed by Maceink Technologies, Tema-Ghana</span>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-6 font-medium">
+          <a href="mailto:info@maceinktech.com" class="hover:text-[#C9A227] transition flex items-center gap-1.5">
+            <i class="fa-solid fa-envelope text-[#C9A227]"></i> info@maceinktech.com
+          </a>
+          <a href="tel:+233545553048" class="hover:text-[#C9A227] transition flex items-center gap-1.5">
+            <i class="fa-solid fa-phone text-[#C9A227]"></i> +233 54 555 3048
+          </a>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Detail Modal -->
+  <div id="detailModal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="card-theme rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border" style="border-color: var(--border-color)">
+      <div class="p-6 border-b flex justify-between items-center card-theme" style="border-color: var(--border-color)">
+        <h3 class="font-bold text-base" style="color: var(--primary-navy)" id="modalTitle">Inspection Detail</h3>
+        <button onclick="closeModal()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#C9A227]/10 transition" style="color: var(--text-muted)"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div id="modalBody" class="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm"></div>
+      <div class="p-5 border-t card-theme text-right" style="border-color: var(--border-color)">
+        <button onclick="closeModal()" class="px-6 py-2.5 border hover:bg-[#C9A227]/10 text-xs font-bold rounded-xl transition" style="border-color: var(--border-color); color: var(--text-main)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submission Preview Modal -->
+  <div id="submissionPreviewModal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="card-theme rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border" style="border-color: var(--border-color)">
+      <div class="p-6 border-b flex justify-between items-center card-theme" style="border-color: var(--border-color)">
+        <h3 id="submissionPreviewTitle" class="font-bold text-base flex items-center gap-2" style="color: var(--primary-navy)">
+          <i class="fa-solid fa-clipboard-question text-[#C9A227]"></i> Inspection Submission Preview
+        </h3>
+        <button onclick="closeSubmissionPreview()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#C9A227]/10 transition" style="color: var(--text-muted)"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div id="submissionPreviewBody" class="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm"></div>
+      <div class="p-5 border-t card-theme flex items-center justify-between" style="border-color: var(--border-color)">
+        <button type="button" onclick="closeSubmissionPreview()" class="px-6 py-3 rounded-xl border font-bold text-xs hover:bg-slate-100 transition flex items-center gap-2" style="border-color: var(--border-color)">
+          <i class="fa-solid fa-arrow-left"></i> Go Back
+        </button>
+        <button type="button" onclick="confirmAndSubmitReinspection()" class="px-8 py-3 rounded-xl bg-[#0B1F3A] hover:bg-[#12304A] text-white font-bold text-xs shadow-lg transition flex items-center gap-2">
+          <i class="fa-solid fa-check"></i> Confirm & Submit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vehicle Inspection Summary / History Modal -->
+  <div id="vehicleSummaryModal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="card-theme rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl border" style="border-color: var(--border-color)">
+      <div class="p-6 border-b flex justify-between items-center card-theme" style="border-color: var(--border-color)">
+        <h3 class="font-bold text-base flex items-center gap-2.5" style="color: var(--primary-navy)">
+          <i class="fa-solid fa-timeline text-[#C9A227]"></i> Vehicle Inspection History Timeline
+        </h3>
+        <button onclick="closeVehicleSummaryModal()" class="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-[#C9A227]/10 transition" style="color: var(--text-muted)"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="p-6 border-b card-theme space-y-3" style="border-color: var(--border-color)">
+        <label class="block text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted)">Search Vehicle by Registration / Plate Number:</label>
+        <div class="flex items-center gap-3">
+          <div class="relative flex-1">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-[#C9A227]"></i>
+            <input type="text" id="vehicleSummarySearchInput" oninput="filterVehicleSummaryModal()" placeholder="e.g. GT-4092-22" class="w-full pl-10 pr-4 py-3 text-xs sm:text-sm rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 font-medium" style="border-color: var(--border-color)">
+          </div>
+          <button onclick="filterVehicleSummaryModal()" class="px-5 py-3 bg-[#0B1F3A] hover:bg-[#12304A] text-white font-bold text-xs rounded-xl shadow transition shrink-0 flex items-center gap-2">
+            <i class="fa-solid fa-search"></i> Search
+          </button>
+        </div>
+      </div>
+
+      <div id="vehicleSummaryModalContent" class="p-6 overflow-y-auto space-y-6 flex-1"></div>
+
+      <div class="p-5 border-t card-theme text-right" style="border-color: var(--border-color)">
+        <button onclick="closeVehicleSummaryModal()" class="px-6 py-2.5 border hover:bg-[#C9A227]/10 text-xs font-bold rounded-xl transition" style="border-color: var(--border-color); color: var(--text-main)">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  const DEFAULT_WEB_APP_URL = "";
+
+  // Function to send inspection records to Google Sheets backend
+  async function saveRecordToBackend(record) {
+    // Update local storage cache immediately for zero-latency response
+    const existingIdx = inspectionHistory.findIndex(r => r.id === record.id);
+    if (existingIdx >= 0) {
+      inspectionHistory[existingIdx] = record;
+    } else {
+      inspectionHistory.push(record);
+    }
+    localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
+    const url = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    if (!url) return; // Silent pass if endpoint not configured yet
+    try {
+      await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ method: 'CREATE', record: record }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' } // Avoid CORS preflight blockers on GAS Web Apps
+      });
+    } catch (err) {
+      console.warn("Backend sync queued locally due to network connectivity:", err);
+    }
+  }
+  // Function to delete records from Google Sheets backend
+  async function deleteRecordFromBackend(recordId) {
+    inspectionHistory = inspectionHistory.filter(r => r.id !== recordId);
+    localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
+    const url = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    if (!url) return;
+    try {
+      await fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ method: 'DELETE', id: recordId }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      });
+    } catch (err) {
+      console.warn("Backend delete synchronization failed:", err);
+    }
+  }
+
+  const technicalSections = [
+    { title: "Master Switch", items: ["Battery isolation on master switch – clearly visible or location marked", "ON and OFF positions of master switch clearly marked", "The master switch is working"] },
+    { title: "Ignition", items: ["Can the truck self-start?"] },
+    { title: "Leaks", items: ["There are no visible signs of leaks from the tank, pipework or valves. Presence of cracks on bulk."] },
+    { title: "Electrical Bonding", items: ["Truck is equipped with a bonding point (Lug), clips are insulated."] },
+    { title: "Driver & PPE", items: ["Driver is equipped with appropriate PPE (Helmet, gloves, safety boots), available and in good condition", "Alcohol test"] },
+    { title: "License & Authorization", items: ["Driver has valid driver’s license for the class of vehicle he operates", "Did driver attend last training course by company?"] },
+    { title: "OBC Violations", items: ["Driver has not driven more than 8 hours, has not exceeded continuous driving time 4 hours, has not worked more than 12 hours a day and speed limits have not been violated. No alerts & Alarm of harsh braking / acceleration."] },
+    { title: "Reverse Alarm", items: ["Truck is equipped with audible reverse buzzer."] },
+    { title: "Battery", items: ["Check battery cover undamaged", "Check that electrical cables are poorly connected and no presence of bare copper wire is sighted", "Battery terminals are clean and tight"] },
+    { title: "Wipers and Horn", items: ["Wipers are working", "Horn is audible and loud"] },
+    { title: "Lights and Signals", items: ["All lights and signals are working"] },
+    { title: "Exhaust", items: ["Check for product spillage on the exhaust system. Heat shield to be provided if exhaust not at the front"] },
+    { title: "Truck Jack", items: ["Is vehicle jack in good working condition"] },
+    { title: "First aid box", items: ["Is vehicle equipped with a first aid box (check content and cleanliness)"] },
+    { title: "Seat belts", items: ["Seat belts in good condition"] },
+    { title: "Fire Extinguishers", items: ["Check two 9kg dry powder extinguishers properly secured to the bulk and easy to remove", "One 2kg fire extinguisher in the cabin", "Fire extinguishers have seals and next test date valid (6 months interval)", "Pressure gauge is in the green zone, not over or under inflated", "Extinguisher hoses are in good condition"] },
+    { title: "Wheel Condition", items: ["Tyres and wheels in good condition", "All studs with wheel-nut aligners are properly fitted", "Check threads on tyres (At least 5mm)"] },
+    { title: "Bulk", items: ["Are compartment capacity labelled and well visible", "Are discharging valves numbered", "Is the crocodile clip well insulated and cable in good condition", "Is the pull/push handle of the emergency shutdown valve red", "Is the handrail in good condition and dome walkway anti-skid"] },
+    { title: "Fifth Wheel Condition", items: ["Fifth wheel mounting bolts secured and all bolt markings aligned", "Fifth wheel secured with padlock"] },
+    { title: "Calibration and Hose", items: ["Check validation on hose certificate and find an engraved truck registration number, serial numbers, and test dates on hoses"] },
+    { title: "Rust", items: ["Check for rust on the truck"] },
+    { title: "Brake Condition", items: ["Test hand brake for effectiveness", "Test foot brake for effectiveness"] }
+  ];
+
+  let inspectionHistory = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
+  let archiveVault = JSON.parse(localStorage.getItem('archiveVault') || '{}');
+  let signatures = { Inspector: null };
+  let currentReinspectionTarget = null;
+  let pendingSubmissionRecord = null;
+  let editingRecordId = null;
+
+  let chartPassFailInstance = null;
+  let chartCategoryFailuresInstance = null;
+  let gaugeChartInstance = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('inspectionDate').valueAsDate = new Date();
+    
+    let savedUrl = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    document.getElementById('sheetsUrl').value = savedUrl;
+
+    renderChecklist();
+    initSignatures();
+    populateAnalyticsYearFilter();
+    renderAnalytics();
+    checkAutomaticYearlyArchiving();
+    populateArchiveYearDropdown();
+    
+    syncDataFromSheets();
+  });
+
+  function toggleUrlBar() {
+    document.getElementById('endpointBar').classList.toggle('hidden');
+  }
+
+  function saveSheetsUrl() {
+    const url = document.getElementById('sheetsUrl').value.trim();
+    localStorage.setItem('sheetsUrl', url);
+    document.getElementById('endpointBar').classList.add('hidden');
+    alert("Endpoint saved successfully!");
+    syncDataFromSheets();
+  }
+
+  async function syncDataFromSheets() {
+    const url = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    if (!url) return;
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network response failed');
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        inspectionHistory = data;
+        localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
+        renderHistoryTable();
+        renderFailedTable();
+        renderReInspectionsTable();
+        populateAnalyticsYearFilter();
+        renderAnalytics();
+        checkAutomaticYearlyArchiving();
+      }
+    } catch (error) {
+      console.warn("Could not fetch live sync from Google Sheets endpoint:", error);
+    }
+  }
+
+  function checkAutomaticYearlyArchiving() {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const isDec31 = (today.getMonth() === 11 && today.getDate() === 31);
+
+    const completedYears = new Set();
+    inspectionHistory.forEach(rec => {
+      if (rec.date) {
+        const y = new Date(rec.date).getFullYear();
+        if (!isNaN(y) && y < currentYear) completedYears.add(y);
+      }
+    });
+
+    completedYears.forEach(year => {
+      if (!archiveVault[year]) {
+        archiveYearSnapshot(year);
+      }
+    });
+
+    if (isDec31 && !archiveVault[currentYear]) {
+      archiveYearSnapshot(currentYear, true);
+    }
+
+    populateArchiveYearDropdown();
+  }
+
+  function archiveYearSnapshot(year, resetActive = false) {
+    const yearRecords = inspectionHistory.filter(rec => {
+      if (!rec.date) return false;
+      return new Date(rec.date).getFullYear() === year;
+    });
+
+    if (yearRecords.length > 0) {
+      archiveVault[year] = {
+        records: yearRecords,
+        archivedAt: new Date().toISOString()
+      };
+      localStorage.setItem('archiveVault', JSON.stringify(archiveVault));
+
+      if (resetActive) {
+        inspectionHistory = inspectionHistory.filter(rec => {
+          if (!rec.date) return true;
+          return new Date(rec.date).getFullYear() !== year;
+        });
+        localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
+      }
+    }
+  }
+
+  function triggerManualYearEndArchive() {
+    const years = new Set();
+    inspectionHistory.forEach(rec => {
+      if (rec.date) {
+        const y = new Date(rec.date).getFullYear();
+        if (!isNaN(y)) years.add(y);
+      }
+    });
+
+    years.forEach(year => {
+      if (!archiveVault[year]) {
+        archiveYearSnapshot(year);
+      }
+    });
+
+    populateArchiveYearDropdown();
+    alert("Manual end-of-year snapshot archive completed successfully!");
+  }
+
+  function populateArchiveYearDropdown() {
+    const select = document.getElementById('archiveYearSelect');
+    if (!select) return;
+
+    const allVaultYears = new Set(Object.keys(archiveVault));
+    inspectionHistory.forEach(rec => {
+      if (rec.date) {
+        const y = new Date(rec.date).getFullYear();
+        if (!isNaN(y)) allVaultYears.add(y);
+      }
+    });
+
+    const sortedYears = Array.from(allVaultYears).sort((a, b) => b - a);
+    select.innerHTML = `<option value="">-- Choose Archived Year --</option>` + 
+      sortedYears.map(y => `<option value="${y}">Year ${y} Archive</option>`).join('');
+  }
+
+  function loadArchivedYear(year) {
+    const container = document.getElementById('archiveContentContainer');
+    const exportBtnContainer = document.getElementById('archiveExportAction');
+    if (!year) {
+      container.classList.add('hidden');
+      exportBtnContainer.classList.add('hidden');
+      return;
+    }
+
+    let records = archiveVault[year]?.records || inspectionHistory.filter(r => r.date && new Date(r.date).getFullYear() == year);
+
+    document.getElementById('activeArchiveYearLabel').innerText = year;
+    container.classList.remove('hidden');
+    exportBtnContainer.classList.remove('hidden');
+
+    const total = records.length;
+    let totalGood = 0, totalBad = 0, failedCount = 0, reinspectCount = 0;
+
+    records.forEach(r => {
+      totalGood += (r.goodCount || 0);
+      totalBad += (r.badCount || 0);
+      if ((r.badCount || 0) > 0) failedCount++;
+      if (r.isReinspection || r.previous_inspection_id) reinspectCount++;
+    });
+
+    const health = Math.round((totalGood / (totalGood + totalBad || 1)) * 100);
+
+    document.getElementById('arch-kpi-total').innerText = total;
+    document.getElementById('arch-kpi-health').innerText = `${health}%`;
+    document.getElementById('arch-kpi-failed').innerText = failedCount;
+    document.getElementById('arch-kpi-reinspect').innerText = reinspectCount;
+
+    const tbody = document.getElementById('archiveTableBody');
+    if (records.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-xs font-bold text-slate-500">No records found for year ${year}.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = records.map(rec => `
+      <tr class="hover:bg-[#C9A227]/5 transition">
+        <td class="p-4.5">${rec.date}</td>
+        <td class="p-4.5 font-bold" style="color: var(--primary-navy)">${rec.regNo}</td>
+        <td class="p-4.5">${rec.omc}</td>
+        <td class="p-4.5">${rec.driverName}</td>
+        <td class="p-4.5">${rec.officerName}</td>
+        <td class="p-4.5">
+          ${rec.badCount > 0 
+            ? `<span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-red-100 text-red-700 border border-red-300">Failed (${rec.badCount})</span>`
+            : `<span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-green-100 text-green-700 border border-green-300">Passed</span>`}
+        </td>
+        <td class="p-4.5 text-right space-x-1.5 whitespace-nowrap">
+          <button onclick="viewDetail('${rec.id}')" class="text-xs text-[#0B1F3A] hover:text-[#C9A227] font-bold transition px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200"><i class="fa-solid fa-eye mr-1"></i>View</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function exportYearlyArchivePDF() {
+    const year = document.getElementById('archiveYearSelect').value;
+    if (!year) { alert("Please select an archived year first."); return; }
+
+    let records = archiveVault[year]?.records || inspectionHistory.filter(r => r.date && new Date(r.date).getFullYear() == year);
+    if (records.length === 0) { alert("No records available to export for this year."); return; }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text(`Yearly Inspection Archive Report - ${year}`, 14, 20);
+
+    let totalGood = 0, totalBad = 0, passed = 0, failed = 0;
+    records.forEach(r => {
+      totalGood += (r.goodCount || 0);
+      totalBad += (r.badCount || 0);
+      if ((r.badCount || 0) === 0) passed++;
+      else failed++;
+    });
+
+    doc.setFontSize(10);
+    doc.text(`Summary: Total Records: ${records.length} | Passed: ${passed} | Failed: ${failed}`, 14, 28);
+
+    doc.autoTable({
+      startY: 35,
+      head: [['Date', 'Plate No', 'OMC', 'Driver', 'Inspector', 'Status']],
+      body: records.map(r => [r.date, r.regNo, r.omc, r.driverName, r.officerName, r.badCount > 0 ? 'Failed' : 'Passed'])
+    });
+
+    doc.save(`Archive_Report_${year}.pdf`);
+  }
+
+  function renderChecklist() {
+    const container = document.getElementById('checklistContainer');
+    container.innerHTML = '';
+
+    technicalSections.forEach((cat, catIdx) => {
+      const catId = `cat-${catIdx}`;
+      let itemsHtml = cat.items.map((item, itemIdx) => {
+        const fieldName = `tech_${catIdx}_${itemIdx}`;
+        const commentId = `comment_${catIdx}_${itemIdx}`;
+        return `
+          <div class="flex flex-col p-3.5 rounded-2xl border gap-3 card-theme shadow-sm transition" style="border-color: var(--border-color)">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-start space-x-3 text-xs sm:text-sm font-medium" style="color: var(--text-main)">
+                <span class="font-bold text-[#C9A227] mt-0.5">${itemIdx + 1}.</span>
+                <span class="leading-relaxed">${item}</span>
+              </div>
+              <div class="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                <div class="status-btn-good">
+                  <input type="radio" id="${fieldName}_yes" name="${fieldName}" value="Yes" checked onchange="toggleCommentBox('${fieldName}', false)" class="hidden">
+                  <label for="${fieldName}_yes" class="px-4 py-1.5 text-xs font-bold rounded-xl border cursor-pointer block transition shadow-sm" style="border-color: var(--border-color)">Yes</label>
+                </div>
+                <div class="status-btn-bad">
+                  <input type="radio" id="${fieldName}_no" name="${fieldName}" value="No" onchange="toggleCommentBox('${fieldName}', true)" class="hidden">
+                  <label for="${fieldName}_no" class="px-4 py-1.5 text-xs font-bold rounded-xl border cursor-pointer block transition shadow-sm" style="border-color: var(--border-color)">No</label>
+                </div>
+              </div>
+            </div>
+            <div id="${commentId}" class="hidden mt-2">
+              <input type="text" id="${commentId}_input" placeholder="Enter details about the issue..." class="w-full px-3.5 py-2 text-xs rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML += `
+        <div class="border rounded-2xl card-theme overflow-hidden shadow-sm transition" style="border-color: var(--border-color)">
+          <button type="button" onclick="toggleAccordion('${catId}')" class="w-full px-5 py-4 flex justify-between items-center text-left font-bold text-xs sm:text-sm bg-[#0B1F3A]/5 hover:bg-[#0B1F3A]/10 transition" style="color: var(--primary-navy)">
+            <span class="tracking-tight">${cat.title}</span>
+            <i id="icon-${catId}" class="fa-solid fa-chevron-down text-xs transition-transform duration-300 text-[#C9A227]"></i>
+          </button>
+          <div id="${catId}" class="accordion-content px-4 pb-4 space-y-3 pt-3">
+            ${itemsHtml}
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function toggleCommentBox(fieldName, show) {
+    const commentBox = document.getElementById(`comment_${fieldName.replace('tech_', '')}`);
+    const inputField = document.getElementById(`comment_${fieldName.replace('tech_', '')}_input`);
+    if (show) {
+      commentBox.classList.remove('hidden');
+    } else {
+      commentBox.classList.add('hidden');
+      if (inputField) inputField.value = '';
+    }
+  }
+
+  function toggleAccordion(id) {
+    document.getElementById(id).classList.toggle('active');
+    document.getElementById(`icon-${id}`).classList.toggle('rotate-180');
+  }
+
+  function initSignatures() {
+    ['Inspector'].forEach(role => {
+      const canvas = document.getElementById(`sigCanvas${role}`);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let drawing = false;
+
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = 140;
+
+      canvas.addEventListener('mousedown', e => { drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
+      canvas.addEventListener('mousemove', e => { if (!drawing) return; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); });
+      canvas.addEventListener('mouseup', () => { drawing = false; signatures[role] = canvas.toDataURL(); });
+      
+      canvas.addEventListener('touchstart', e => {
+        drawing = true;
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        ctx.beginPath();
+        ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        e.preventDefault();
+      });
+      canvas.addEventListener('touchmove', e => {
+        if (!drawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        ctx.stroke();
+        e.preventDefault();
+      });
+      canvas.addEventListener('touchend', () => { drawing = false; signatures[role] = canvas.toDataURL(); });
+    });
+  }
+
+  function clearSignature(role) {
+    const canvas = document.getElementById(`sigCanvas${role}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    signatures[role] = null;
+  }
+
+  function switchTab(tab) {
+    ['new', 'history', 'failed', 'reinspections', 'analytics', 'archive'].forEach(t => {
+      document.getElementById(`view-${t}`)?.classList.add('hidden');
+      const tabBtn = document.getElementById(`tab-${t}`);
+      if (tabBtn) tabBtn.className = 'w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-[#C9A227] hover:bg-[#C9A227]/10 flex items-center gap-3 shrink-0 transition-all';
+    });
+    document.getElementById(`view-${tab}`)?.classList.remove('hidden');
+    const activeBtn = document.getElementById(`tab-${tab}`);
+    if (activeBtn) activeBtn.className = 'w-full text-left px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold bg-[#C9A227] text-[#0B1F3A] flex items-center gap-3 shrink-0 transition-all shadow-md shadow-[#C9A227]/20';
+
+    if (tab === 'history') renderHistoryTable();
+    if (tab === 'failed') renderFailedTable();
+    if (tab === 'reinspections') renderReInspectionsTable();
+    if (tab === 'analytics') renderAnalytics();
+    if (tab === 'archive') populateArchiveYearDropdown();
+  }
+
+  function changeTheme(themeName) {
+    if (themeName === 'default') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', themeName);
+  }
+
+  /* Helper to Sort Vehicle Records Chronologically (Original Inspection Always First) */
+  function sortVehicleRecordsChronologically(records) {
+    return records.slice().sort((a, b) => {
+      const timeA = a.date ? new Date(a.date).getTime() : 0;
+      const timeB = b.date ? new Date(b.date).getTime() : 0;
+
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+
+      const idTimeA = parseInt((a.id || '').replace(/\D/g, '')) || 0;
+      const idTimeB = parseInt((b.id || '').replace(/\D/g, '')) || 0;
+
+      if (idTimeA !== idTimeB) {
+        return idTimeA - idTimeB;
+      }
+
+      const isReA = a.isReinspection || !!a.previous_inspection_id;
+      const isReB = b.isReinspection || !!b.previous_inspection_id;
+      if (!isReA && isReB) return -1;
+      if (isReA && !isReB) return 1;
+
+      return 0;
+    });
+  }
+
+  /* Helper to Group Records into Inspection Cycles in Exact Order (Updated to handle Passed reinspections) */
+  function getVehicleInspectionCycles(regNo) {
+    if (!regNo) return [];
+    const normalizedPlate = regNo.trim().toUpperCase();
+    const records = inspectionHistory
+      .filter(r => (r.regNo || '').trim().toUpperCase() === normalizedPlate);
+
+    const sortedRecords = sortVehicleRecordsChronologically(records);
+
+    const cycles = [];
+    let currentCycle = null;
+
+    sortedRecords.forEach(rec => {
+      const isReinspect = rec.isReinspection || !!rec.previous_inspection_id;
+      if (!isReinspect || !currentCycle) {
+        if (currentCycle) cycles.push(currentCycle);
+        currentCycle = {
+          cycleId: rec.id,
+          originalRecord: rec,
+          records: [rec],
+          isPassed: (rec.badCount || 0) === 0,
+          hasFailed: (rec.badCount || 0) > 0
+        };
+      } else {
+        currentCycle.records.push(rec);
+        if ((rec.badCount || 0) === 0) {
+          currentCycle.isPassed = true;
+          currentCycle.hasFailed = false;
+        } else {
+          currentCycle.isPassed = false;
+          currentCycle.hasFailed = true;
+        }
+      }
+    });
+
+    if (currentCycle) cycles.push(currentCycle);
+    return cycles;
+  }
+
+  function getVehicleReinspectionCount(regNo) {
+    if (!regNo) return 0;
+    const cycles = getVehicleInspectionCycles(regNo);
+    if (cycles.length === 0) return 0;
+    const latestCycle = cycles[cycles.length - 1];
+    return Math.max(0, latestCycle.records.length - 1);
+  }
+
+  /* Normalize a plate number to alphanumeric-only, uppercase, so formatting
+     differences (hyphens, spaces, case) never cause a false mismatch. */
+  function normalizePlateChars(str) {
+    return (str || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  }
+
+  /* Vehicles whose latest inspection cycle has failed and has not yet passed
+     a reinspection - i.e. reinspection is required and not yet completed. */
+  function getPendingReinspectionVehicles() {
+    const plates = Array.from(new Set(
+      inspectionHistory
+        .map(r => (r.regNo || '').trim().toUpperCase())
+        .filter(p => p.length > 0)
+    ));
+
+    const pending = [];
+    plates.forEach(plate => {
+      const cycles = getVehicleInspectionCycles(plate);
+      if (cycles.length === 0) return;
+      const latestCycle = cycles[cycles.length - 1];
+      if ((latestCycle.originalRecord.badCount || 0) > 0 && !latestCycle.isPassed) {
+        pending.push({
+          plate: plate,
+          cycle: latestCycle,
+          latestRecord: latestCycle.records[latestCycle.records.length - 1],
+          originalRecord: latestCycle.originalRecord,
+          reinspectCount: Math.max(0, latestCycle.records.length - 1)
+        });
+      }
+    });
+    return pending;
+  }
+
+  /* Match an entered plate number (any formatting) against vehicles pending
+     reinspection, ignoring formatting differences and case. */
+  function findPendingReinspectionByPlate(regNo) {
+    const normalized = normalizePlateChars(regNo);
+    if (!normalized) return null;
+    return getPendingReinspectionVehicles().find(v => normalizePlateChars(v.plate) === normalized) || null;
+  }
+
+  /* Guard used before a NEW inspection is allowed to start. Returns true if
+     it's fine to proceed, false if a pending reinspection blocked it. */
+  function checkReinspectionRequired() {
+    if (currentReinspectionTarget || editingRecordId) return true;
+
+    const regInput = document.getElementById('regNo');
+    if (!regInput) return true;
+    const val = regInput.value.trim();
+    if (!val) return true;
+
+    const match = findPendingReinspectionByPlate(val);
+    if (match) {
+      alert(`Vehicle ${match.plate} failed a previous inspection and must undergo a re-inspection before a new inspection can be started. You're being redirected to its record under Failed Inspections.`);
+      regInput.value = '';
+      goToPendingReinspection(match.plate);
+      return false;
+    }
+    return true;
+  }
+
+  /* Navigate to the Failed Inspections tab and surface the given vehicle's record. */
+  function goToPendingReinspection(plate) {
+    switchTab('failed');
+    setTimeout(() => {
+      const failedSearchInput = document.getElementById('failedSearch');
+      if (failedSearchInput) {
+        failedSearchInput.value = plate;
+        renderFailedTable();
+      }
+    }, 50);
+  }
+
+  /* Render the "Pending Reinspections" section on the main Dashboard. */
+  function renderPendingReinspectionsDashboard() {
+    const container = document.getElementById('pendingReinspectionsList');
+    const badge = document.getElementById('pendingReinspectionsCountBadge');
+    if (!container) return;
+
+    const pending = getPendingReinspectionVehicles();
+    if (badge) badge.innerText = `${pending.length} Pending`;
+
+    if (pending.length === 0) {
+      container.innerHTML = `<div class="p-5 text-center text-xs font-bold rounded-2xl border" style="border-color: var(--border-color); color: var(--text-muted)">No vehicles are currently pending reinspection.</div>`;
+      return;
+    }
+
+    container.innerHTML = pending.map(item => `
+      <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border card-theme shadow-sm" style="border-color: var(--border-color); background-color: rgba(217, 119, 6, 0.06);">
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 shrink-0">
+            <i class="fa-solid fa-truck-front"></i>
+          </div>
+          <div>
+            <div class="font-extrabold text-xs sm:text-sm" style="color: var(--primary-navy)">${item.plate}</div>
+            <div class="text-[11px] font-semibold" style="color: var(--text-muted)">Failed on ${item.originalRecord.date} &middot; ${item.reinspectCount} attempt${item.reinspectCount === 1 ? '' : 's'} so far</div>
+          </div>
+        </div>
+        <button onclick="goToPendingReinspection('${item.plate}')" class="px-4 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow transition flex items-center gap-2">
+          <i class="fa-solid fa-arrow-right"></i> View in Failed Inspections
+        </button>
+      </div>
+    `).join('');
+  }
+
+  function openVehicleInspectionHistoryModal(regNo) {
+    openVehicleSummaryModal(regNo);
+  }
+
+  function openVehicleSummaryModal(prefillPlate = '') {
+    const modal = document.getElementById('vehicleSummaryModal');
+    const searchInput = document.getElementById('vehicleSummarySearchInput');
+    if (searchInput) searchInput.value = prefillPlate || '';
+    filterVehicleSummaryModal();
+    modal.classList.remove('hidden');
+  }
+
+  function closeVehicleSummaryModal() {
+    document.getElementById('vehicleSummaryModal').classList.add('hidden');
+  }
+
+  function filterVehicleSummaryModal() {
+    const container = document.getElementById('vehicleSummaryModalContent');
+    if (!container) return;
+    const query = (document.getElementById('vehicleSummarySearchInput')?.value || '').trim().toLowerCase();
+
+    const plates = Array.from(new Set(
+      inspectionHistory
+        .map(r => (r.regNo || '').trim().toUpperCase())
+        .filter(p => p.length > 0)
+    ));
+
+    const filteredPlates = query 
+      ? plates.filter(p => p.toLowerCase().includes(query))
+      : plates;
+
+    if (filteredPlates.length === 0) {
+      container.innerHTML = `<div class="p-8 text-center text-xs font-bold text-slate-500">No vehicle records found.</div>`;
+      return;
+    }
+
+    container.innerHTML = filteredPlates.map(plate => {
+      const cycles = getVehicleInspectionCycles(plate);
+      let plateHtml = `
+        <div class="card-theme p-5 rounded-3xl border shadow-md space-y-5" style="border-color: var(--border-color)">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-4" style="border-color: var(--border-color)">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-[#0B1F3A] text-[#C9A227] flex items-center justify-center font-black text-sm">
+                <i class="fa-solid fa-truck-front"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-[#0B1F3A] dark:text-slate-100">${plate}</h3>
+                <p class="text-xs text-slate-500">${cycles.length} Inspection Cycle${cycles.length === 1 ? '' : 's'}</p>
+              </div>
+            </div>
+          </div>
+      `;
+
+      cycles.forEach((cycle, cycleIndex) => {
+        plateHtml += `
+          <div class="space-y-4 pt-2">
+            <div class="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl text-xs font-bold text-[#0B1F3A] dark:text-slate-200">
+              <span>Cycle ${cycleIndex + 1} (Started: ${cycle.originalRecord.date})</span>
+              <span>${cycle.isPassed ? '<span class="text-green-600"><i class="fa-solid fa-check-circle mr-1"></i>Completed / Passed</span>' : '<span class="text-red-600"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Active Failure Cycle</span>'}</span>
+            </div>
+
+            <div class="relative border-l-2 border-[#C9A227]/40 ml-4 pl-6 space-y-5">
+        `;
+
+        cycle.records.forEach((rec, recIndex) => {
+          const stepLabel = recIndex === 0 ? "Original Inspection" : `Reinspection ${recIndex}`;
+          const isPass = (rec.badCount || 0) === 0;
+          const failedItems = (rec.checklist || []).filter(item => item.status === 'No');
+
+          plateHtml += `
+            <div class="relative">
+              <div class="absolute -left-[35px] top-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isPass ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}">
+                ${recIndex + 1}
+              </div>
+              <div class="p-4 rounded-2xl border card-theme space-y-2 text-xs" style="border-color: var(--border-color)">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2" style="border-color: var(--border-color)">
+                  <div class="flex items-center gap-2">
+                    <span class="font-extrabold px-2.5 py-0.5 rounded-lg ${recIndex === 0 ? 'bg-[#0B1F3A] text-white' : 'bg-amber-100 text-amber-800'}">${stepLabel}</span>
+                    <span class="text-slate-500 font-semibold"><i class="fa-regular fa-calendar mr-1"></i>${rec.date}</span>
+                  </div>
+                  <div>
+                    ${isPass 
+                      ? '<span class="px-2.5 py-0.5 rounded-lg font-bold bg-green-100 text-green-700">Passed</span>'
+                      : `<span class="px-2.5 py-0.5 rounded-lg font-bold bg-red-100 text-red-700">Failed (${rec.badCount})</span>`}
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600 dark:text-slate-300 py-1">
+                  <div><strong>Driver:</strong> ${rec.driverName || 'N/A'}</div>
+                  <div><strong>Inspector:</strong> ${rec.officerName || 'N/A'}</div>
+                  <div><strong>OMC:</strong> ${rec.omc || 'N/A'}</div>
+                  <div><strong>Odometer:</strong> ${rec.odometer || 'N/A'} km</div>
+                </div>
+
+                ${failedItems.length > 0 ? `
+                  <div class="space-y-1.5 pt-1">
+                    <div class="font-bold text-red-600 text-[11px]"><i class="fa-solid fa-circle-exclamation mr-1"></i>Failed Checklist Items & Defect Descriptions:</div>
+                    <div class="space-y-1">
+                      ${failedItems.map(f => `
+                        <div class="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border border-red-200">
+                          <div class="font-bold">${f.category} - ${f.item}</div>
+                          ${f.comment ? `<div class="text-slate-600 dark:text-slate-300 mt-0.5 font-normal"><strong>Comment:</strong> ${f.comment}</div>` : ''}
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : '<div class="text-green-600 font-bold text-[11px]"><i class="fa-solid fa-check mr-1"></i>Passed all technical requirements.</div>'}
+
+                ${rec.correctiveActions && rec.correctiveActions.length > 0 ? `
+                  <div class="space-y-1 pt-1">
+                    <div class="font-bold text-amber-600 text-[11px]">Corrective Actions Logged:</div>
+                    ${rec.correctiveActions.map(ca => `
+                      <div class="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-300">
+                        <strong>${ca.category} - ${ca.item}:</strong> ${ca.actionTaken}
+                      </div>
+                    `).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        });
+
+        plateHtml += `
+            </div>
+          </div>
+        `;
+      });
+
+      plateHtml += `</div>`;
+      return plateHtml;
+    }).join('');
+  }
+
+  function startReInspection(id) {
+    const rec = inspectionHistory.find(r => r.id === id);
+    if (!rec) return;
+
+    // Frontend safeguard: Prevent unnecessary reinspection if vehicle has already passed in latest cycle
+    const cycles = getVehicleInspectionCycles(rec.regNo);
+    if (cycles.length > 0) {
+      const latestCycle = cycles[cycles.length - 1];
+      if (latestCycle.isPassed) {
+        alert("Cannot initiate reinspection: This vehicle inspection process has already been successfully completed (Passed).");
+        return;
+      }
+    }
+
+    if (confirm("Do you want to initiate a re-inspection for this vehicle?")) {
+      editingRecordId = null;
+      currentReinspectionTarget = rec.id;
+      switchTab('new');
+
+      const regInput = document.getElementById('regNo');
+      regInput.value = rec.regNo;
+      regInput.readOnly = true;
+      regInput.classList.add('bg-slate-200', 'cursor-not-allowed', 'opacity-75');
+
+      if (rec.driverName) document.getElementById('driverNameInput').value = rec.driverName;
+      if (rec.omc) {
+        document.getElementById('omc').value = rec.omc;
+        document.getElementById('omc').disabled = true;
+      }
+
+      document.getElementById('reinspectionBanner').classList.remove('hidden');
+      document.getElementById('cancelReinspectionBtn').classList.remove('hidden');
+      document.getElementById('cancelReinspectionBtn').classList.add('flex');
+
+      populateAccumulatedDefectHistory(rec.regNo);
+    }
+  }
+
+  function populateAccumulatedDefectHistory(regNo) {
+    const section = document.getElementById('previousDefectsSection');
+    const container = document.getElementById('previousDefectsList');
+    container.innerHTML = '';
+
+    const normalizedPlate = regNo.trim().toUpperCase();
+    const vehicleRecords = sortVehicleRecordsChronologically(
+      inspectionHistory.filter(r => (r.regNo || '').trim().toUpperCase() === normalizedPlate)
+    );
+
+    let accumulatedHtml = '';
+    let globalIndex = 0;
+
+    vehicleRecords.forEach((pastRec) => {
+      const failedItems = (pastRec.checklist || []).filter(item => item.status === 'No');
+      if (failedItems.length > 0) {
+        accumulatedHtml += `
+          <div class="p-4 rounded-2xl border card-theme space-y-3 shadow-sm bg-slate-50/50 dark:bg-slate-900/30" style="border-color: var(--border-color)">
+            <div class="flex items-center justify-between border-b pb-2" style="border-color: var(--border-color)">
+              <span class="text-xs font-bold text-slate-700 dark:text-slate-300">Inspection Date: ${pastRec.date} (${pastRec.id})</span>
+              <span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">Failed (${failedItems.length} issues)</span>
+            </div>
+        `;
+
+        failedItems.forEach((defect) => {
+          let existingAction = '';
+          vehicleRecords.forEach(subRec => {
+            if (subRec.correctiveActions) {
+              const found = subRec.correctiveActions.find(ca => ca.item === defect.item && ca.category === defect.category);
+              if (found && found.actionTaken) {
+                existingAction = found.actionTaken;
+              }
+            }
+          });
+
+          if (existingAction) {
+            accumulatedHtml += `
+              <div class="p-3 rounded-xl border bg-white dark:bg-slate-800 space-y-2 border-emerald-500/30">
+                <div class="text-xs font-bold text-red-600">Previous Defect: ${defect.category} - ${defect.item}</div>
+                <div class="text-xs text-emerald-600 font-semibold">Previous Action Taken: ${existingAction}</div>
+              </div>
+            `;
+          } else {
+            accumulatedHtml += `
+              <div class="p-3 rounded-xl border bg-white dark:bg-slate-800 space-y-2 border-amber-500/30">
+                <div class="text-xs font-bold text-red-600">Unresolved Defect: ${defect.category} - ${defect.item}</div>
+                <div class="text-xs text-slate-500">Original Comment: ${defect.comment || 'None'}</div>
+                <div>
+                  <label class="block text-xs font-bold uppercase tracking-wider mb-1.5" style="color: var(--text-muted)">Action Taken / Corrective Action for this defect *</label>
+                  <input type="text" name="corrective_action_${globalIndex}" data-defect-item="${defect.item}" data-defect-category="${defect.category}" placeholder="Record repair completed..." required class="corrective-action-input w-full px-4 py-2.5 text-xs rounded-xl border bg-transparent outline-none focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
+                </div>
+              </div>
+            `;
+            globalIndex++;
+          }
+        });
+
+        accumulatedHtml += `</div>`;
+      }
+    });
+
+    if (!accumulatedHtml) {
+      container.innerHTML = `<p class="text-xs text-slate-500 italic">No previous defect history found for this vehicle.</p>`;
+    } else {
+      container.innerHTML = accumulatedHtml;
+    }
+
+    section.classList.remove('hidden');
+  }
+
+  function cancelReinspection() {
+    currentReinspectionTarget = null;
+    editingRecordId = null;
+    const regInput = document.getElementById('regNo');
+    regInput.readOnly = false;
+    regInput.classList.remove('bg-slate-200', 'cursor-not-allowed', 'opacity-75');
+    regInput.value = '';
+    document.getElementById('omc').disabled = false;
+    document.getElementById('reinspectionBanner').classList.add('hidden');
+    document.getElementById('cancelReinspectionBtn').classList.remove('flex');
+    document.getElementById('cancelReinspectionBtn').classList.add('hidden');
+    document.getElementById('previousDefectsSection').classList.add('hidden');
+    document.getElementById('previousDefectsList').innerHTML = '';
+  }
+
+  function handleFormSubmit(e) {
+    e.preventDefault();
+
+    if (!checkReinspectionRequired()) {
+      return;
+    }
+
+    const checklist = [];
+    let badCount = 0;
+    let goodCount = 0;
+
+    technicalSections.forEach((cat, catIdx) => {
+      cat.items.forEach((item, itemIdx) => {
+        const fieldName = `tech_${catIdx}_${itemIdx}`;
+        const val = document.querySelector(`input[name="${fieldName}"]:checked`)?.value || 'Yes';
+        const commentVal = document.getElementById(`comment_${catIdx}_${itemIdx}_input`)?.value || '';
+        if (val === 'No') badCount++;
+        else goodCount++;
+        checklist.push({ category: cat.title, item: item, status: val, comment: commentVal });
+      });
+    });
+
+    const regNoVal = document.getElementById('regNo').value.trim();
+    const isReinspection = currentReinspectionTarget !== null;
+
+    const correctiveActions = [];
+    if (isReinspection) {
+      document.querySelectorAll('.corrective-action-input').forEach(input => {
+        correctiveActions.push({
+          category: input.getAttribute('data-defect-category'),
+          item: input.getAttribute('data-defect-item'),
+          actionTaken: input.value.trim(),
+          recordedBy: document.getElementById('inspectorName').value,
+          dateReported: document.getElementById('inspectionDate').value
+        });
+      });
+    }
+
+    const recId = editingRecordId || ('INS-' + Date.now());
+
+    pendingSubmissionRecord = {
+      action: editingRecordId ? 'update' : 'create',
+      id: recId,
+      previous_inspection_id: isReinspection ? currentReinspectionTarget : null,
+      isReinspection: isReinspection,
+      regNo: regNoVal,
+      driverName: document.getElementById('driverNameInput').value,
+      odometer: document.getElementById('odometer').value || 'N/A',
+      date: document.getElementById('inspectionDate').value,
+      omc: document.getElementById('omc').value,
+      regulatory: {
+        license: document.getElementById('reg_license').value,
+        insurance: document.getElementById('reg_insurance').value,
+        dvla: document.getElementById('reg_dvla').value,
+        calibration: document.getElementById('reg_calibration').value,
+        npa: document.getElementById('reg_npa').value,
+        rsl: document.getElementById('reg_rsl').value
+      },
+      correctiveActions: correctiveActions,
+      officerName: document.getElementById('inspectorName').value,
+      officerSignature: signatures['Inspector'],
+      badCount: badCount,
+      goodCount: goodCount,
+      checklist: checklist
+    };
+
+    displaySubmissionPreview(pendingSubmissionRecord);
+  }
+
+  function displaySubmissionPreview(rec) {
+    const modalBody = document.getElementById('submissionPreviewBody');
+    const isFailed = (rec.badCount || 0) > 0;
+    const outcomeBadge = isFailed 
+      ? `<span class="px-3 py-1 rounded-xl text-xs font-bold bg-red-100 text-red-700 border border-red-300">Fail (${rec.badCount} Deficiencies)</span>` 
+      : `<span class="px-3 py-1 rounded-xl text-xs font-bold bg-green-100 text-green-700 border border-green-300">Pass</span>`;
+
+    const previewTitle = document.getElementById('submissionPreviewTitle');
+    if (previewTitle) {
+      if (rec.isReinspection) {
+        previewTitle.innerHTML = `<i class="fa-solid fa-clipboard-question text-[#C9A227]"></i> Reinspection Submission Preview`;
+      } else {
+        previewTitle.innerHTML = `<i class="fa-solid fa-clipboard-check text-[#C9A227]"></i> Inspection Submission Preview`;
+      }
+    }
+
+    let checklistSummary = (rec.checklist || []).map(c => `
+      <div class="flex items-center justify-between py-1 border-b text-xs" style="border-color: var(--border-color)">
+        <span><strong>${c.category}:</strong> ${c.item}</span>
+        <span class="font-bold ${c.status === 'No' ? 'text-red-600' : 'text-green-600'}">${c.status}</span>
+      </div>
+    `).join('');
+
+    let correctiveActionsSummary = '';
+    if (rec.correctiveActions && rec.correctiveActions.length > 0) {
+      correctiveActionsSummary = `
+        <div class="space-y-2 pt-2">
+          <h4 class="font-bold text-xs uppercase tracking-wider text-[#C9A227]">Corrective Actions Entered</h4>
+          <div class="p-3 rounded-xl border bg-amber-50/20 space-y-2" style="border-color: var(--border-color)">
+            ${rec.correctiveActions.map(ca => `
+              <div class="text-xs border-b pb-2 last:border-b-0 last:pb-0 space-y-1" style="border-color: var(--border-color)">
+                <div><strong>Defect:</strong> ${ca.category} - ${ca.item}</div>
+                <div><strong>Action Taken:</strong> <span class="text-slate-700">${ca.actionTaken}</span></div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    modalBody.innerHTML = `
+      <div class="space-y-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-[#C9A227]">Vehicle Information</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-[#F8F4E8] p-4 rounded-2xl text-xs border font-medium text-[#0B1F3A]" style="border-color: var(--border-color)">
+          <div><strong>Plate:</strong> ${rec.regNo}</div>
+          <div><strong>Driver:</strong> ${rec.driverName}</div>
+          <div><strong>OMC:</strong> ${rec.omc}</div>
+          <div><strong>Odometer:</strong> ${rec.odometer} km</div>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-[#C9A227]">Inspection Details & Outcome</h4>
+        <div class="p-3 rounded-xl border flex items-center justify-between" style="border-color: var(--border-color)">
+          <span class="text-xs font-bold">Overall Inspection Outcome:</span>
+          ${outcomeBadge}
+        </div>
+        <div class="p-3 rounded-xl border text-xs" style="border-color: var(--border-color)">
+          <strong>Submission Date & Time:</strong> ${rec.date} ${new Date().toLocaleTimeString()}
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-[#C9A227]">Officer Information & Signature</h4>
+        <div class="p-3 rounded-xl border text-xs space-y-2" style="border-color: var(--border-color)">
+          <div><strong>Officer Name:</strong> ${rec.officerName || 'N/A'}</div>
+          <div><strong>Officer Signature:</strong> ${rec.officerSignature ? '<span class="text-green-600 font-bold">Provided</span>' : '<span class="text-red-500">Not Provided</span>'}</div>
+        </div>
+      </div>
+
+      ${correctiveActionsSummary}
+
+      <div class="space-y-2 pt-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-[#C9A227]">All Checklist Items and Results</h4>
+        <div class="p-4 rounded-xl border max-h-48 overflow-y-auto space-y-1" style="border-color: var(--border-color)">
+          ${checklistSummary}
+        </div>
+      </div>
+    `;
+
+    document.getElementById('submissionPreviewModal').classList.remove('hidden');
+  }
+
+  function closeSubmissionPreview() {
+    document.getElementById('submissionPreviewModal').classList.add('hidden');
+  }
+
+  async function confirmAndSubmitReinspection() {
+    if (!pendingSubmissionRecord) return;
+
+    if (!confirm("Are you sure you want to submit this inspection? Once submitted, the record will be saved.")) {
+      return;
+    }
+
+    const record = pendingSubmissionRecord;
+
+    await saveRecordToBackend(record);
+
+    alert('Inspection submitted successfully!');
+    closeSubmissionPreview();
+
+    document.getElementById('inspectionForm').reset();
+    document.getElementById('inspectionDate').valueAsDate = new Date();
+    cancelReinspection();
+    renderChecklist();
+    
+    if (record.isReinspection) {
+      switchTab('reinspections');
+    } else {
+      switchTab('history');
+    }
+
+    pendingSubmissionRecord = null;
+    editingRecordId = null;
+  }
+
+  function getFilteredHistory() {
+    const query = document.getElementById('historySearch')?.value.toLowerCase() || '';
+    const startDate = document.getElementById('filterStartDate')?.value;
+    const endDate = document.getElementById('filterEndDate')?.value;
+
+    return inspectionHistory.filter(item => {
+      if (startDate && item.date < startDate) return false;
+      if (endDate && item.date > endDate) return false;
+      if (query) {
+        return item.regNo?.toLowerCase().includes(query) || 
+               item.driverName?.toLowerCase().includes(query) || 
+               item.omc?.toLowerCase().includes(query);
+      }
+      return true;
+    });
+  }
+
+  function clearDateFilter() {
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    renderHistoryTable();
+  }
+
+  function renderHistoryTable() {
+    const tbody = document.getElementById('historyTableBody');
+    if (!tbody) return;
+    const filtered = getFilteredHistory();
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-xs font-bold" style="color: var(--text-muted)">No inspection records found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(rec => {
+      const reinspectCount = getVehicleReinspectionCount(rec.regNo);
+      return `
+        <tr class="hover:bg-[#C9A227]/5 transition">
+          <td class="p-4.5">${rec.date}</td>
+          <td class="p-4.5 font-bold" style="color: var(--primary-navy)">${rec.regNo}</td>
+          <td class="p-4.5">${rec.omc}</td>
+          <td class="p-4.5">${rec.driverName}</td>
+          <td class="p-4.5">${rec.officerName}</td>
+          <td class="p-4.5">
+            <button onclick="openVehicleInspectionHistoryModal('${rec.regNo}')" title="View Inspection Sequence" class="px-2.5 py-1 rounded-lg text-xs font-bold transition hover:scale-105 cursor-pointer underline decoration-dotted flex items-center gap-1.5 ${reinspectCount > 0 ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'}">
+              <i class="fa-solid fa-clock-rotate-left text-[11px]"></i>
+              <span>${reinspectCount} attempt${reinspectCount === 1 ? '' : 's'}</span>
+            </button>
+          </td>
+          <td class="p-4.5">
+            ${rec.badCount > 0 
+              ? `<span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-red-100 text-red-700 border border-red-300">Failed (${rec.badCount})</span>`
+              : `<span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-green-100 text-green-700 border border-green-300">Passed</span>`}
+          </td>
+          <td class="p-4.5 text-right space-x-1.5 whitespace-nowrap">
+            <button onclick="viewDetail('${rec.id}')" class="text-xs text-[#0B1F3A] hover:text-[#C9A227] font-bold transition px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200"><i class="fa-solid fa-eye mr-1"></i>View</button>
+            <button onclick="editRecord('${rec.id}')" class="text-xs text-amber-700 hover:text-amber-800 font-bold transition px-2 py-1 rounded-lg bg-amber-50 hover:bg-amber-100"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
+            <button onclick="deleteRecord('${rec.id}')" class="text-xs text-red-600 hover:text-red-700 font-bold transition px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  /* Updated renderFailedTable with disabled/blurred reinspection button if vehicle already passed */
+  function renderFailedTable() {
+    const tbody = document.getElementById('failedTableBody');
+    if (!tbody) return;
+
+    const query = document.getElementById('failedSearch')?.value.toLowerCase() || '';
+
+    const plates = Array.from(new Set(
+      inspectionHistory
+        .map(r => (r.regNo || '').trim().toUpperCase())
+        .filter(p => p.length > 0)
+    ));
+
+    const failedCycleVehicles = [];
+
+    plates.forEach(plate => {
+      const cycles = getVehicleInspectionCycles(plate);
+      if (cycles.length > 0) {
+        const latestCycle = cycles[cycles.length - 1];
+        if ((latestCycle.originalRecord.badCount || 0) > 0) {
+          failedCycleVehicles.push({
+            plate: plate,
+            cycle: latestCycle,
+            latestRecord: latestCycle.records[latestCycle.records.length - 1],
+            originalRecord: latestCycle.originalRecord,
+            reinspectCount: Math.max(0, latestCycle.records.length - 1),
+            isPassed: latestCycle.isPassed
+          });
+        }
+      }
+    });
+
+    let filtered = failedCycleVehicles;
+    if (query) {
+      filtered = filtered.filter(item => item.plate.toLowerCase().includes(query));
+    }
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-xs font-bold" style="color: var(--text-muted)">No failed inspection records found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(item => {
+      const rec = item.latestRecord;
+      const failedItems = (rec.checklist || []).filter(i => i.status === 'No');
+      const failureReason = failedItems.length > 0
+        ? failedItems.map(f => `${f.category}: ${f.item}`).slice(0, 2).join(', ') + (failedItems.length > 2 ? '...' : '')
+        : (item.isPassed ? 'Successfully Passed After Reinspection' : 'Technical Defect Detected');
+
+      const actionButtonHtml = item.isPassed
+        ? `<button disabled title="No further reinspection required because the vehicle has already passed" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-200 text-slate-500 cursor-not-allowed opacity-60 blur-[0.3px] flex items-center gap-1.5 shadow-none"><i class="fa-solid fa-ban"></i> Passed - No Reinspection Required</button>`
+        : `<button onclick="startReInspection('${rec.id}')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[#C9A227] text-[#0B1F3A] hover:bg-[#B08D1F] transition shadow flex items-center gap-1.5"><i class="fa-solid fa-rotate-right"></i> Re-Inspect</button>`;
+
+      return `
+        <tr class="hover:bg-[#C9A227]/5 transition">
+          <td class="p-4.5 font-bold" style="color: var(--primary-navy)">${item.plate}</td>
+          <td class="p-4.5">
+            <div><strong>Driver:</strong> ${rec.driverName || 'N/A'}</div>
+            <div class="text-[11px] text-slate-500">OMC: ${rec.omc || 'N/A'}</div>
+          </td>
+          <td class="p-4.5">${item.originalRecord.date}</td>
+          <td class="p-4.5">
+            <button onclick="openVehicleInspectionHistoryModal('${item.plate}')" title="View Inspection Sequence" class="px-2.5 py-1 rounded-lg text-xs font-bold transition hover:scale-105 cursor-pointer underline decoration-dotted flex items-center gap-1.5 bg-amber-100 text-amber-800 border border-amber-300">
+              <i class="fa-solid fa-clock-rotate-left text-[11px]"></i>
+              <span>${item.reinspectCount} attempt${item.reinspectCount === 1 ? '' : 's'}</span>
+            </button>
+          </td>
+          <td class="p-4.5 max-w-xs truncate ${item.isPassed ? 'text-green-600 font-semibold' : 'text-red-600 font-medium'}" title="${failureReason}">
+            ${failureReason}
+          </td>
+          <td class="p-4.5 text-right space-x-1.5 whitespace-nowrap">
+            ${actionButtonHtml}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  /* Updated: group reinspection records under one record per vehicle, with
+     an expandable panel showing the full chronological reinspection history.
+     Underlying records are untouched/unmerged in inspectionHistory - only
+     the UI groups them together. */
+  function renderReInspectionsTable() {
+    const container = document.getElementById('reinspectionsListContainer');
+    if (!container) return;
+
+    const reinspections = inspectionHistory.filter(r => r.isReinspection || r.previous_inspection_id);
+
+    const plates = Array.from(new Set(
+      reinspections
+        .map(r => (r.regNo || '').trim().toUpperCase())
+        .filter(p => p.length > 0)
+    ));
+
+    if (plates.length === 0) {
+      container.innerHTML = `<div class="card-theme p-8 text-center text-xs font-bold rounded-3xl border" style="border-color: var(--border-color); color: var(--text-muted)">No re-inspection records found.</div>`;
+      return;
+    }
+
+    container.innerHTML = plates.map((plate, idx) => {
+      const vehicleReinspections = sortVehicleRecordsChronologically(
+        reinspections.filter(r => (r.regNo || '').trim().toUpperCase() === plate)
+      );
+      const latestRec = vehicleReinspections[vehicleReinspections.length - 1];
+      const latestPassed = (latestRec.badCount || 0) === 0;
+      const accId = `reinsp-acc-${idx}`;
+
+      const historyHtml = vehicleReinspections.map((rec, i) => {
+        const isPass = (rec.badCount || 0) === 0;
+        return `
+          <div class="p-4 rounded-2xl border card-theme space-y-2 text-xs" style="border-color: var(--border-color)">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2" style="border-color: var(--border-color)">
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold px-2.5 py-0.5 rounded-lg bg-amber-100 text-amber-800">Reinspection ${i + 1}</span>
+                <span class="font-semibold" style="color: var(--text-muted)"><i class="fa-regular fa-calendar mr-1"></i>${rec.date}</span>
+              </div>
+              ${isPass
+                ? '<span class="px-2.5 py-0.5 rounded-lg font-bold bg-green-100 text-green-700">Passed</span>'
+                : `<span class="px-2.5 py-0.5 rounded-lg font-bold bg-red-100 text-red-700">Failed (${rec.badCount})</span>`}
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] py-1" style="color: var(--text-muted)">
+              <div><strong>OMC:</strong> ${rec.omc || 'N/A'}</div>
+              <div><strong>Driver:</strong> ${rec.driverName || 'N/A'}</div>
+              <div><strong>Inspector:</strong> ${rec.officerName || 'N/A'}</div>
+              <div><strong>Odometer:</strong> ${rec.odometer || 'N/A'} km</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="card-theme border rounded-3xl overflow-hidden shadow-md" style="border-color: var(--border-color)">
+          <button type="button" onclick="toggleAccordion('${accId}')" class="w-full px-5 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 text-left transition hover:bg-[#C9A227]/5">
+            <div class="flex items-center gap-3.5">
+              <div class="w-10 h-10 rounded-xl bg-[#0B1F3A] text-[#C9A227] flex items-center justify-center font-black text-sm shrink-0">
+                <i class="fa-solid fa-truck-front"></i>
+              </div>
+              <div>
+                <div class="font-extrabold text-sm" style="color: var(--primary-navy)">${plate}</div>
+                <div class="text-[11px] font-semibold" style="color: var(--text-muted)">${vehicleReinspections.length} re-inspection${vehicleReinspections.length === 1 ? '' : 's'} on record</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              ${latestPassed
+                ? '<span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-green-100 text-green-700 border border-green-300">Passed</span>'
+                : '<span class="px-3 py-1 rounded-xl text-[11px] font-bold bg-red-100 text-red-700 border border-red-300">Pending / Failed</span>'}
+              <i id="icon-${accId}" class="fa-solid fa-chevron-down text-xs transition-transform duration-300 text-[#C9A227]"></i>
+            </div>
+          </button>
+          <div id="${accId}" class="accordion-content px-5 sm:px-6 pb-5 space-y-3">
+            ${historyHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function viewDetail(id) {
+    const rec = inspectionHistory.find(r => r.id === id);
+    if (!rec) return;
+
+    document.getElementById('modalTitle').innerText = `Inspection Detail - ${rec.regNo} (${rec.date})`;
+    const modalBody = document.getElementById('modalBody');
+
+    let checklistHtml = (rec.checklist || []).map(c => `
+      <div class="flex items-center justify-between py-1 border-b text-xs" style="border-color: var(--border-color)">
+        <span><strong>${c.category}:</strong> ${c.item}</span>
+        <span class="font-bold ${c.status === 'No' ? 'text-red-600' : 'text-green-600'}">${c.status} ${c.comment ? '(' + c.comment + ')' : ''}</span>
+      </div>
+    `).join('');
+
+    modalBody.innerHTML = `
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-[#0B1F3A]/5 font-medium border" style="border-color: var(--border-color)">
+        <div><strong>Plate:</strong> ${rec.regNo}</div>
+        <div><strong>Driver:</strong> ${rec.driverName}</div>
+        <div><strong>OMC:</strong> ${rec.omc}</div>
+        <div><strong>Odometer:</strong> ${rec.odometer} km</div>
+        <div><strong>Inspector:</strong> ${rec.officerName}</div>
+        <div><strong>Status:</strong> ${rec.badCount > 0 ? 'Failed (' + rec.badCount + ')' : 'Passed'}</div>
+      </div>
+      <div class="space-y-2 pt-2">
+        <h4 class="font-bold text-xs uppercase tracking-wider text-[#C9A227]">Checklist Items</h4>
+        <div class="max-h-60 overflow-y-auto space-y-1 p-3 border rounded-xl" style="border-color: var(--border-color)">
+          ${checklistHtml}
+        </div>
+      </div>
+    `;
+
+    document.getElementById('detailModal').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('detailModal').classList.add('hidden');
+  }
+
+  function editRecord(id) {
+    const rec = inspectionHistory.find(r => r.id === id);
+    if (!rec) return;
+
+    editingRecordId = rec.id;
+    switchTab('new');
+
+    document.getElementById('regNo').value = rec.regNo;
+    document.getElementById('driverNameInput').value = rec.driverName || '';
+    document.getElementById('odometer').value = rec.odometer || '';
+    document.getElementById('inspectionDate').value = rec.date || '';
+    document.getElementById('omc').value = rec.omc || '';
+    document.getElementById('inspectorName').value = rec.officerName || '';
+
+    if (rec.regulatory) {
+      document.getElementById('reg_license').value = rec.regulatory.license || '';
+      document.getElementById('reg_insurance').value = rec.regulatory.insurance || '';
+      document.getElementById('reg_dvla').value = rec.regulatory.dvla || '';
+      document.getElementById('reg_calibration').value = rec.regulatory.calibration || '';
+      document.getElementById('reg_npa').value = rec.regulatory.npa || '';
+      document.getElementById('reg_rsl').value = rec.regulatory.rsl || '';
+    }
+
+    if (rec.checklist) {
+      rec.checklist.forEach((item, catIdx) => {
+        // Find matching input by item name & category
+        technicalSections.forEach((cat, cIdx) => {
+          if (cat.title === item.category) {
+            cat.items.forEach((it, iIdx) => {
+              if (it === item.item) {
+                const fieldName = `tech_${cIdx}_${iIdx}`;
+                const radio = document.getElementById(`${fieldName}_${item.status === 'No' ? 'no' : 'yes'}`);
+                if (radio) {
+                  radio.checked = true;
+                  toggleCommentBox(fieldName, item.status === 'No');
+                  if (item.status === 'No' && item.comment) {
+                    const commentInput = document.getElementById(`comment_${cIdx}_${iIdx}_input`);
+                    if (commentInput) commentInput.value = item.comment;
+                  }
+                }
+              }
+            });
+          }
+        });
+      });
+    }
+
+    alert("Loaded record for editing. Make your changes and submit.");
+  }
+
+  async function deleteRecord(id) {
+    if (confirm("Are you sure you want to delete this inspection record?")) {
+      await deleteRecordFromBackend(id);
+      renderHistoryTable();
+      renderFailedTable();
+      renderReInspectionsTable();
+      renderAnalytics();
+      alert("Record deleted successfully.");
+    }
+  }
+
+  function populateAnalyticsYearFilter() {
+    const select = document.getElementById('analyticsYearFilter');
+    if (!select) return;
+
+    const years = new Set();
+    inspectionHistory.forEach(rec => {
+      if (rec.date) {
+        const y = new Date(rec.date).getFullYear();
+        if (!isNaN(y)) years.add(y);
+      }
+    });
+
+    const sorted = Array.from(years).sort((a, b) => b - a);
+    select.innerHTML = `<option value="ALL">All Years</option>` + 
+      sorted.map(y => `<option value="${y}">${y}</option>`).join('');
+  }
+
+  /* Determine the comparison period immediately preceding the currently
+     selected year/month filter, used to compute rising/falling trend arrows. */
+  function getPreviousPeriodRecords(yearFilter, monthFilter) {
+    let prevYear, prevMonth;
+
+    if (monthFilter !== 'ALL' && yearFilter !== 'ALL') {
+      let y = parseInt(yearFilter), m = parseInt(monthFilter) - 1;
+      if (m < 0) { m = 11; y -= 1; }
+      prevYear = y.toString();
+      prevMonth = m.toString();
+    } else if (yearFilter !== 'ALL') {
+      prevYear = (parseInt(yearFilter) - 1).toString();
+      prevMonth = 'ALL';
+    } else {
+      const years = Array.from(new Set(
+        inspectionHistory.filter(r => r.date).map(r => new Date(r.date).getFullYear())
+      )).sort((a, b) => b - a);
+      prevYear = years.length >= 2 ? years[1].toString() : null;
+      prevMonth = 'ALL';
+    }
+
+    if (!prevYear) return [];
+
+    return inspectionHistory.filter(rec => {
+      if (!rec.date) return false;
+      const d = new Date(rec.date);
+      if (d.getFullYear().toString() !== prevYear) return false;
+      if (prevMonth !== 'ALL' && d.getMonth().toString() !== prevMonth) return false;
+      return true;
+    });
+  }
+
+  function computeCategoryFailureCounts(records) {
+    const counts = {};
+    records.forEach(rec => {
+      if (rec.checklist) {
+        rec.checklist.forEach(item => {
+          if (item.status === 'No') counts[item.category] = (counts[item.category] || 0) + 1;
+        });
+      }
+    });
+    return counts;
+  }
+
+  function renderAnalytics() {
+    const yearFilter = document.getElementById('analyticsYearFilter')?.value || 'ALL';
+    const monthFilter = document.getElementById('analyticsMonthFilter')?.value || 'ALL';
+
+    const filtered = inspectionHistory.filter(rec => {
+      if (!rec.date) return false;
+      const d = new Date(rec.date);
+      if (yearFilter !== 'ALL' && d.getFullYear().toString() !== yearFilter) return false;
+      if (monthFilter !== 'ALL' && d.getMonth().toString() !== monthFilter) return false;
+      return true;
+    });
+
+    const total = filtered.length;
+    let totalGood = 0, totalBad = 0, failedCount = 0, reinspectAttempts = 0;
+
+    filtered.forEach(rec => {
+      totalGood += (rec.goodCount || 0);
+      totalBad += (rec.badCount || 0);
+      if ((rec.badCount || 0) > 0) failedCount++;
+      if (rec.isReinspection || rec.previous_inspection_id) reinspectAttempts++;
+    });
+
+    const categoryFailures = computeCategoryFailureCounts(filtered);
+
+    const previousPeriodRecords = getPreviousPeriodRecords(yearFilter, monthFilter);
+    const categoryFailuresPrev = computeCategoryFailureCounts(previousPeriodRecords);
+    const hasPreviousPeriodData = previousPeriodRecords.length > 0;
+
+    const categoryTrends = {};
+    Object.keys(categoryFailures).forEach(cat => {
+      if (!hasPreviousPeriodData) { categoryTrends[cat] = 'flat'; return; }
+      const cur = categoryFailures[cat] || 0;
+      const prev = categoryFailuresPrev[cat] || 0;
+      if (cur > prev) categoryTrends[cat] = 'up';
+      else if (cur < prev) categoryTrends[cat] = 'down';
+      else categoryTrends[cat] = 'flat';
+    });
+
+    renderPendingReinspectionsDashboard();
+
+    const health = Math.round((totalGood / (totalGood + totalBad || 1)) * 100);
+
+    document.getElementById('kpi-total').innerText = total;
+    document.getElementById('kpi-health').innerText = `${health}%`;
+    document.getElementById('kpi-failed-count').innerText = failedCount;
+    document.getElementById('kpi-reinspect-attempts').innerText = reinspectAttempts;
+
+    const passedCount = total - failedCount;
+    const passPct = total > 0 ? Math.round((passedCount / total) * 100) : 0;
+    const failPct = total > 0 ? Math.round((failedCount / total) * 100) : 0;
+
+    document.getElementById('cube-pass-percentage').innerText = `${passPct}%`;
+    document.getElementById('cube-pass-count').innerText = `${passedCount} records`;
+    document.getElementById('cube-fail-percentage').innerText = `${failPct}%`;
+    document.getElementById('cube-fail-count').innerText = `${failedCount} records`;
+
+    // Update the speedometer/gauge visual with the current pass percentage
+    renderGaugeChart(passPct);
+
+    // Render Charts
+    renderCharts(passedCount, failedCount, categoryFailures, categoryTrends);
+  }
+
+  /* Custom Chart.js plugin (scoped to the gauge chart instance only) that draws
+     a needle pointing at the current percentage value plus a centre hub. */
+  const gaugeNeedlePlugin = {
+    id: 'gaugeNeedlePlugin',
+    afterDatasetsDraw(chart) {
+      const value = chart.$gaugeValue;
+      if (value === undefined || value === null) return;
+      const meta = chart.getDatasetMeta(0);
+      if (!meta.data.length) return;
+      const arc = meta.data[0];
+      const { x: cx, y: cy, outerRadius } = arc;
+      const ctx = chart.ctx;
+
+      // Map 0-100 to an angle sweeping from -180deg (left) through -90deg (top) to 0deg (right)
+      const angle = (Math.PI * (Math.max(0, Math.min(100, value)) / 100)) - Math.PI;
+      const needleLength = outerRadius * 0.8;
+      const needleWidth = 7;
+      const navy = getComputedStyle(document.documentElement).getPropertyValue('--primary-navy').trim() || '#0B1F3A';
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(-needleLength * 0.12, -needleWidth / 2);
+      ctx.lineTo(needleLength, 0);
+      ctx.lineTo(-needleLength * 0.12, needleWidth / 2);
+      ctx.closePath();
+      ctx.fillStyle = navy || '#0B1F3A';
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#C9A227';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+
+  /* Renders / updates the speedometer-style gauge used to visualise the
+     current pass percentage. Reads only the already-computed passPct value
+     (no change to the underlying data source or calculation). */
+  function renderGaugeChart(passPct) {
+    const canvas = document.getElementById('gaugeChart');
+    if (!canvas) return;
+    const ctxGauge = canvas.getContext('2d');
+    const value = Math.max(0, Math.min(100, Number(passPct) || 0));
+
+    const valueColor = value >= 75 ? '#22C55E' : (value >= 50 ? '#D97706' : '#DC2626');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const trackColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(11, 31, 58, 0.08)';
+
+    if (gaugeChartInstance) {
+      gaugeChartInstance.data.datasets[1].data = [value, 100 - value];
+      gaugeChartInstance.data.datasets[1].backgroundColor = [valueColor, trackColor];
+      gaugeChartInstance.$gaugeValue = value;
+      gaugeChartInstance.update();
+    } else {
+      gaugeChartInstance = new Chart(ctxGauge, {
+        type: 'doughnut',
+        data: {
+          datasets: [
+            {
+              // Static reference zone bands (red / amber / green) so the level
+              // can be read at a glance, independent of the current value.
+              data: [50, 25, 25],
+              backgroundColor: ['#DC2626', '#D97706', '#22C55E'],
+              borderWidth: 0,
+              weight: 0.32
+            },
+            {
+              // Dynamic fill representing the actual percentage value.
+              data: [value, 100 - value],
+              backgroundColor: [valueColor, trackColor],
+              borderWidth: 0,
+              weight: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          rotation: -90,
+          circumference: 180,
+          cutout: '68%',
+          layout: { padding: 0 },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          animation: { animateRotate: true, duration: 600 }
+        },
+        plugins: [gaugeNeedlePlugin]
+      });
+      gaugeChartInstance.$gaugeValue = value;
+    }
+
+    const pctEl = document.getElementById('gauge-percentage');
+    if (pctEl) pctEl.innerText = `${value}%`;
+  }
+
+  function renderCharts(passedCount, failedCount, categoryFailures, categoryTrends) {
+    categoryTrends = categoryTrends || {};
+    const ctxPassFail = document.getElementById('chartCumulativePassFail')?.getContext('2d');
+    if (ctxPassFail) {
+      if (chartPassFailInstance) chartPassFailInstance.destroy();
+      chartPassFailInstance = new Chart(ctxPassFail, {
+        type: 'doughnut',
+        data: {
+          labels: ['Passed', 'Failed'],
+          datasets: [{
+            data: [passedCount, failedCount],
+            backgroundColor: ['#22C55E', '#DC2626'],
+            borderWidth: 2
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    const ctxCat = document.getElementById('chartCategoryFailures')?.getContext('2d');
+    if (ctxCat) {
+      const catLabels = Object.keys(categoryFailures);
+      const catData = Object.values(categoryFailures);
+      const trendColor = (label) => {
+        const t = categoryTrends[label];
+        if (t === 'up') return 'rgba(220, 38, 38, 0.8)';
+        if (t === 'down') return 'rgba(34, 197, 94, 0.8)';
+        return '#C9A227';
+      };
+
+      /* Inline plugin (scoped to this chart instance only) that draws a small
+         rising/falling arrow above each bar based on categoryTrends. */
+      const trendArrowPlugin = {
+        id: 'trendArrowPlugin',
+        afterDatasetsDraw(chart) {
+          const ctx = chart.ctx;
+          const meta = chart.getDatasetMeta(0);
+          meta.data.forEach((bar, index) => {
+            const label = catLabels[index];
+            const trend = categoryTrends[label];
+            if (!trend) return;
+            ctx.save();
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            if (trend === 'up') {
+              ctx.fillStyle = '#DC2626';
+              ctx.fillText('▲', bar.x, bar.y - 6);
+            } else if (trend === 'down') {
+              ctx.fillStyle = '#22C55E';
+              ctx.fillText('▼', bar.x, bar.y - 6);
+            } else {
+              // Neutral indicator: no meaningful change, or no prior period to compare against
+              ctx.fillStyle = '#9CA3AF';
+              ctx.fillText('▬', bar.x, bar.y - 6);
+            }
+            ctx.restore();
+          });
+        }
+      };
+
+      if (chartCategoryFailuresInstance) chartCategoryFailuresInstance.destroy();
+      chartCategoryFailuresInstance = new Chart(ctxCat, {
+        type: 'bar',
+        data: {
+          labels: catLabels,
+          datasets: [{
+            label: 'Failures by Category',
+            data: catData,
+            backgroundColor: catLabels.map(trendColor),
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { top: 22 } }
+        },
+        plugins: [trendArrowPlugin]
+      });
+    }
+  }
+
+  function exportAnalyticsPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Management Inspection Analytics Report", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+    doc.text(`Total Inspections: ${document.getElementById('kpi-total').innerText}`, 14, 36);
+    doc.text(`Fleet Health Index: ${document.getElementById('kpi-health').innerText}`, 14, 44);
+    doc.text(`Total Failed: ${document.getElementById('kpi-failed-count').innerText}`, 14, 52);
+    doc.save("Analytics_Report.pdf");
+  }
+
+  function downloadHistoryData(type) {
+    const filtered = getFilteredHistory();
+    if (filtered.length === 0) { alert("No data available to download."); return; }
+
+    if (type === 'pdf') {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("Inspection History Report", 14, 20);
+      doc.autoTable({
+        startY: 28,
+        head: [['Date', 'Plate No', 'OMC', 'Driver', 'Inspector', 'Status']],
+        body: filtered.map(r => [r.date, r.regNo, r.omc, r.driverName, r.officerName, r.badCount > 0 ? 'Failed' : 'Passed'])
+      });
+      doc.save("Inspection_History.pdf");
+    } else if (type === 'excel') {
+      const worksheet = XLSX.utils.json_to_sheet(filtered.map(r => ({
+        Date: r.date,
+        PlateNo: r.regNo,
+        OMC: r.omc,
+        Driver: r.driverName,
+        Inspector: r.officerName,
+        Status: r.badCount > 0 ? 'Failed' : 'Passed'
+      })));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "History");
+      XLSX.writeFile(workbook, "Inspection_History.xlsx");
+    }
+  }
+  </script>
+</body>
+</html>
