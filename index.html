@@ -949,7 +949,7 @@
   const technicalSections = [
     { title: "Master Switch", items: ["Battery isolation on master switch – clearly visible or location marked", "ON and OFF positions of master switch clearly marked", "The master switch is working"] },
     { title: "Ignition", items: ["Can the truck self-start?"] },
-    { title: "Leaks", items: ["There are no visible signs of leaks from the tank, pipework or valves. Presence of cracks on bulk."] },
+    { title: "Leaks", items: ["There are no visible signs of leaks from the tank, pipework or valves. Presence of cracks on bulk.", "Air leakage"] },
     { title: "Electrical Bonding", items: ["Truck is equipped with a bonding point (Lug), clips are insulated."] },
     { title: "Driver & PPE", items: ["Driver is equipped with appropriate PPE (Helmet, gloves, safety boots), available and in good condition", "Alcohol test"] },
     { title: "License & Authorization", items: ["Driver has valid driver’s license for the class of vehicle he operates", "Did driver attend last training course by company?"] },
@@ -960,15 +960,17 @@
     { title: "Lights and Signals", items: ["All lights and signals are working"] },
     { title: "Exhaust", items: ["Check for product spillage on the exhaust system. Heat shield to be provided if exhaust not at the front"] },
     { title: "Truck Jack", items: ["Is vehicle jack in good working condition"] },
+    { title: "Toolbox", items: ["Every tool is in the tool box"] },
     { title: "First aid box", items: ["Is vehicle equipped with a first aid box (check content and cleanliness)"] },
     { title: "Seat belts", items: ["Seat belts in good condition"] },
     { title: "Fire Extinguishers", items: ["Check two 9kg dry powder extinguishers properly secured to the bulk and easy to remove", "One 2kg fire extinguisher in the cabin", "Fire extinguishers have seals and next test date valid (6 months interval)", "Pressure gauge is in the green zone, not over or under inflated", "Extinguisher hoses are in good condition"] },
     { title: "Wheel Condition", items: ["Tyres and wheels in good condition", "All studs with wheel-nut aligners are properly fitted", "Check threads on tyres (At least 5mm)"] },
-    { title: "Bulk", items: ["Are compartment capacity labelled and well visible", "Are discharging valves numbered", "Is the crocodile clip well insulated and cable in good condition", "Is the pull/push handle of the emergency shutdown valve red", "Is the handrail in good condition and dome walkway anti-skid"] },
+    { title: "Bulk", items: ["Are compartment capacity labelled and well visible", "Are discharging valves numbered", "Markings & Stickers", "Is the crocodile clip well insulated and cable in good condition", "Is the pull/push handle of the emergency shutdown valve red", "Is the handrail in good condition and dome walkway anti-skid"] },
     { title: "Fifth Wheel Condition", items: ["Fifth wheel mounting bolts secured and all bolt markings aligned", "Fifth wheel secured with padlock"] },
     { title: "Calibration and Hose", items: ["Check validation on hose certificate and find an engraved truck registration number, serial numbers, and test dates on hoses"] },
     { title: "Rust", items: ["Check for rust on the truck"] },
-    { title: "Brake Condition", items: ["Test hand brake for effectiveness", "Test foot brake for effectiveness"] }
+    { title: "Brake Condition", items: ["Test hand brake for effectiveness", "Test foot brake for effectiveness"] },
+    { title: "Other Technical issues", items: ["No other issues observed"] }
   ];
 
   let inspectionHistory = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
