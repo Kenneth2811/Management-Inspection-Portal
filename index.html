@@ -906,18 +906,20 @@
 
   <script>
   const DEFAULT_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwUsERE3xXqbRsR6OxB_dPTMjIdnP9nCqSuUM3tiZkCF8Bbix0SCwC_jBo-ztJY6CVa/exec";
+  // Backend endpoint, held in memory only for the life of this page (no localStorage).
+  let sheetsUrl = DEFAULT_WEB_APP_URL;
 
   // Function to send inspection records to Google Sheets backend
   async function saveRecordToBackend(record) {
-    // Update local storage cache immediately for zero-latency response
+    // Update in-memory list immediately for zero-latency UI response;
+    // the backend remains the single source of truth for persistence.
     const existingIdx = inspectionHistory.findIndex(r => r.id === record.id);
     if (existingIdx >= 0) {
       inspectionHistory[existingIdx] = record;
     } else {
       inspectionHistory.push(record);
     }
-    localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
-    const url = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    const url = sheetsUrl || DEFAULT_WEB_APP_URL;
     if (!url) return; // Silent pass if endpoint not configured yet
     try {
       await fetch(url, {
@@ -926,14 +928,13 @@
         headers: { 'Content-Type': 'text/plain;charset=utf-8' } // Avoid CORS preflight blockers on GAS Web Apps
       });
     } catch (err) {
-      console.warn("Backend sync queued locally due to network connectivity:", err);
+      console.warn("Backend sync failed due to network connectivity:", err);
     }
   }
   // Function to delete records from Google Sheets backend
   async function deleteRecordFromBackend(recordId) {
     inspectionHistory = inspectionHistory.filter(r => r.id !== recordId);
-    localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
-    const url = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    const url = sheetsUrl || DEFAULT_WEB_APP_URL;
     if (!url) return;
     try {
       await fetch(url, {
@@ -973,8 +974,10 @@
     { title: "Other issues", items: ["No other issues observed"] }
   ];
 
-  let inspectionHistory = JSON.parse(localStorage.getItem('inspectionHistory') || '[]');
-  let archiveVault = JSON.parse(localStorage.getItem('archiveVault') || '{}');
+  // Both are populated from the backend (see syncDataFromSheets / checkAutomaticYearlyArchiving)
+  // rather than persisted locally.
+  let inspectionHistory = [];
+  let archiveVault = {};
   let signatures = { Inspector: null };
   let currentReinspectionTarget = null;
   let pendingSubmissionRecord = null;
@@ -987,8 +990,7 @@
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('inspectionDate').valueAsDate = new Date();
     
-    let savedUrl = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
-    document.getElementById('sheetsUrl').value = savedUrl;
+    document.getElementById('sheetsUrl').value = sheetsUrl;
 
     renderChecklist();
     initSignatures();
@@ -1006,14 +1008,14 @@
 
   function saveSheetsUrl() {
     const url = document.getElementById('sheetsUrl').value.trim();
-    localStorage.setItem('sheetsUrl', url);
+    sheetsUrl = url;
     document.getElementById('endpointBar').classList.add('hidden');
     alert("Endpoint saved successfully!");
     syncDataFromSheets();
   }
 
   async function syncDataFromSheets() {
-    const url = localStorage.getItem('sheetsUrl') || DEFAULT_WEB_APP_URL;
+    const url = sheetsUrl || DEFAULT_WEB_APP_URL;
     if (!url) return;
 
     try {
@@ -1022,7 +1024,6 @@
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
         inspectionHistory = data;
-        localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
         renderHistoryTable();
         renderFailedTable();
         renderReInspectionsTable();
@@ -1072,14 +1073,12 @@
         records: yearRecords,
         archivedAt: new Date().toISOString()
       };
-      localStorage.setItem('archiveVault', JSON.stringify(archiveVault));
 
       if (resetActive) {
         inspectionHistory = inspectionHistory.filter(rec => {
           if (!rec.date) return true;
           return new Date(rec.date).getFullYear() !== year;
         });
-        localStorage.setItem('inspectionHistory', JSON.stringify(inspectionHistory));
       }
     }
   }
