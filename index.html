@@ -506,6 +506,10 @@
             <i class="fa-solid fa-magnifying-glass text-[#C9A227] pl-2"></i>
             <input type="text" id="historySearch" oninput="renderHistoryTable()" placeholder="Search plate number, driver, OMC..." class="px-3 py-2 text-sm border rounded-xl bg-transparent outline-none w-full focus:ring-2 focus:ring-[#C9A227]/30 transition font-medium" style="border-color: var(--border-color)">
           </div>
+          <label class="flex items-center gap-2 text-[11px] font-medium cursor-pointer select-none opacity-70 hover:opacity-100 transition" style="color: var(--text-muted)">
+            <input type="checkbox" id="tidyViewToggle" onchange="tidyViewEnabled = this.checked; renderHistoryTable();" class="cursor-pointer accent-[#C9A227]">
+            <span>Tidy view</span>
+          </label>
           <button onclick="syncDataFromSheets()" class="px-5 py-2.5 border text-xs font-bold rounded-xl hover:bg-[#C9A227]/10 transition shadow-sm flex items-center gap-2 card-theme" style="border-color: var(--border-color)">
             <i class="fa-solid fa-arrows-rotate text-[#C9A227]"></i> Refresh Data
           </button>
@@ -977,6 +981,7 @@
   // Both are populated from the backend (see syncDataFromSheets / checkAutomaticYearlyArchiving)
   // rather than persisted locally.
   let inspectionHistory = [];
+  let tidyViewEnabled = false;
   let archiveVault = {};
   let signatures = { Inspector: null };
   let currentReinspectionTarget = null;
@@ -1962,7 +1967,7 @@
     const startDate = document.getElementById('filterStartDate')?.value;
     const endDate = document.getElementById('filterEndDate')?.value;
 
-    return inspectionHistory.filter(item => {
+    const result = inspectionHistory.filter(item => {
       if (startDate && item.date < startDate) return false;
       if (endDate && item.date > endDate) return false;
       if (query) {
@@ -1972,6 +1977,19 @@
       }
       return true;
     });
+
+    // Optional "Tidy view": earliest date first; same-date records keep their entry order
+    if (tidyViewEnabled) {
+      return result
+        .map((item, idx) => ({ item, idx }))
+        .sort((a, b) => {
+          const tA = a.item.date ? new Date(a.item.date).getTime() : 0;
+          const tB = b.item.date ? new Date(b.item.date).getTime() : 0;
+          return (tA - tB) || (a.idx - b.idx);
+        })
+        .map(x => x.item);
+    }
+    return result;
   }
 
   function clearDateFilter() {
